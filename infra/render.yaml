@@ -1,0 +1,33 @@
+﻿services:
+  - type: web
+    name: zests-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: GCP_STORAGE_CREDENTIALS_JSON
+        sync: false
+
+  - type: web
+    name: zests-admin
+    env: node
+    rootDir: admin
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://xyz.render.com/api/v1
+
+  - type: worker
+    name: zests-celery-worker
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.workers.celery_app.celery_app worker --loglevel=INFO

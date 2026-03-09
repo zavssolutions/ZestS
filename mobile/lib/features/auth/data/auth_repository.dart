@@ -1,0 +1,96 @@
+﻿import "package:dio/dio.dart";
+import "package:firebase_auth/firebase_auth.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:google_sign_in/google_sign_in.dart";
+
+import "../../../core/api_client.dart";
+
+class AuthLoginResult {
+  const AuthLoginResult({required this.token, required this.isNewUser});
+
+  final String token;
+  final bool isNewUser;
+}
+
+class AuthRepository {
+  AuthRepository(this._dio);
+
+  final Dio _dio;
+  bool _isGoogleInitialized = false;
+
+  Future<void> _ensureGoogleInitialized() async {
+    if (_isGoogleInitialized) {
+      return;
+    }
+    await GoogleSignIn.instance.initialize();
+    _isGoogleInitialized = true;
+  }
+
+  Future<AuthLoginResult> signInWithGoogle() async {
+    await _ensureGoogleInitialized();
+    final account = await GoogleSignIn.instance.authenticate();
+    final auth = account.authentication;
+    final credential = GoogleAuthProvider.credential(
+      idToken: auth.idToken,
+    );
+
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final idToken = await userCredential.user?.getIdToken(true);
+    if (idToken == null) {
+      throw Exception("Unable to get Firebase ID token");
+    }
+    return _exchangeToken(idToken);
+  }
+
+  Future<String> sendOtp({
+    required String phone,
+    required void Function(String verificationId) onCodeSent,
+  }) async {
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phone,
+      codeAutoRetrievalTimeout: (_) {},
+      verificationCompleted: (_) {},
+      verificationFailed: (e) => throw Exception(e.message ?? "Phone verification failed"),
+      codeSent: (verificationId, _) => onCodeSent(verificationId),
+    );
+    return "sent";
+  }
+
+  Future<AuthLoginResult> verifyOtp({
+    required String verificationId,
+    required String otp,
+  }) async {
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: otp,
+    );
+    final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final idToken = await userCredential.user?.getIdToken(true);
+    if (idToken == null) {
+      throw Exception("Unable to get Firebase ID token");
+    }
+    return _exchangeToken(idToken);
+  }
+
+  Future<AuthLoginResult> _exchangeToken(String token) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      "/auth/token",
+      data: {"id_token": token},
+    );
+    final data = response.data ?? {};
+    return AuthLoginResult(
+      token: data["access_token"] as String? ?? token,
+      isNewUser: data["is_new_user"] as bool? ?? false,
+    );
+  }
+
+  Future<void> signOut() async {
+    await FirebaseAuth.instance.signOut();
+    await _ensureGoogleInitialized();
+    await GoogleSignIn.instance.signOut();
+  }
+}
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  return AuthRepository(ref.watch(dioProvider));
+});

@@ -1,0 +1,43 @@
+﻿from datetime import date
+from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
+from app.models.enums import Sport, UserRole
+
+
+class UserProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    parent_id: Optional[UUID]
+    role: UserRole
+    first_name: Optional[str]
+    last_name: Optional[str]
+    mobile_no: Optional[str]
+    email: Optional[str]
+    dob: Optional[date]
+    favorite_sport: Optional[str]
+    profile_picture_url: Optional[str]
+    has_completed_profile: bool
+
+
+class UserProfileUpsert(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    mobile_no: Optional[str] = None
+    email: Optional[str] = None
+    dob: Optional[date] = None
+    favorite_sport: Sport = Sport.SKATING
+
+
+class KidCreate(BaseModel):
+    first_name: str
+    last_name: Optional[str] = None
+    dob: date
+    gender: Optional[str] = "unspecified"
+
+
+class UserRoleUpdate(BaseModel):
+    role: UserRole
