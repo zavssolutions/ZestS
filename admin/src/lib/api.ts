@@ -1,6 +1,6 @@
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
-function authHeaders() {
+function authHeaders(): Record<string, string> {
   if (typeof window === "undefined") {
     return {};
   }
@@ -12,13 +12,15 @@ function authHeaders() {
 }
 
 async function apiRequest<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...authHeaders(),
+  };
+
   const response = await fetch(`${baseUrl}${path}`, {
     method,
     cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders(),
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
 
