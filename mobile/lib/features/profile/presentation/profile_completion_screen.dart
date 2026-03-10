@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 
-import "../data/profile_repository.dart";
 import "../data/profile_providers.dart";
 
 class ProfileCompletionScreen extends ConsumerStatefulWidget {

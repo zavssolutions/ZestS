@@ -12,7 +12,6 @@ import "../../../features/home/data/banner_model.dart";
 import "../../../features/home/data/banners_repository.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
-import "../../../features/profile/data/profile_repository.dart";
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -350,7 +349,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Text(dob == null ? "Select DOB" : "DOB: ${dob!.toLocal().toIso8601String().split("T")[0]}"),
               ),
               DropdownButtonFormField<String>(
-                value: gender,
+                initialValue: gender,
                 items: const [
                   DropdownMenuItem(value: "male", child: Text("Male")),
                   DropdownMenuItem(value: "female", child: Text("Female")),
@@ -382,8 +381,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         gender: gender,
                       );
                   ref.invalidate(kidsProvider);
-                  if (context.mounted) Navigator.pop(context);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
                 } catch (e) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Unable to add kid: $e")),
                   );

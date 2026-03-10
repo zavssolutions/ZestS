@@ -72,13 +72,13 @@ final appLinksBootstrapProvider = Provider.family<void, GoRouter>((ref, router) 
   ref.onDispose(() => subscription.cancel());
 });
 
-Future<void> _handleReferral(WidgetRef ref, String eventId, String referrerId) async {
+Future<void> _handleReferral(Ref ref, String eventId, String referrerId) async {
   final profile = await ref.read(profileRepositoryProvider).readCachedProfile();
   if (profile == null) {
     return;
   }
   final prefs = await ref.read(sharedPreferencesProvider.future);
-  final key = "referral_install_${eventId}_${referrerId}";
+  final key = "referral_install_${eventId}_$referrerId";
   final installed = prefs.getBool(key) ?? false;
   final payload = {"referrer_user_id": referrerId, "referred_user_id": profile.id};
   if (!installed) {

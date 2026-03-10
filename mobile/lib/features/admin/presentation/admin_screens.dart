@@ -213,16 +213,20 @@ class AdminEventsScreen extends ConsumerWidget {
     try {
       if (action == "publish") {
         await dio.put("/admin/events/${event["id"]}", data: {"status": "published"});
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event published. Notifications sent.")));
       } else if (action == "cancel") {
         await dio.put("/admin/events/${event["id"]}", data: {"status": "canceled"});
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event cancelled. Notifications sent.")));
       } else if (action == "delete") {
         await dio.delete("/admin/events/${event["id"]}");
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event deleted")));
       }
       ref.invalidate(adminEventsProvider);
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
@@ -263,8 +267,10 @@ class AdminEventsScreen extends ConsumerWidget {
                   "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
                 });
                 ref.invalidate(adminEventsProvider);
-                if (ctx.mounted) Navigator.pop(ctx);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
               } catch (e) {
+                if (!ctx.mounted) return;
                 ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
               }
             },
@@ -656,9 +662,12 @@ class AdminMiscScreen extends ConsumerWidget {
             onPressed: () async {
               try {
                 await dio.put("/admin/pages/$slug", data: {"content": ctrl.text});
-                if (ctx.mounted) Navigator.pop(ctx);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$title updated")));
               } catch (e) {
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
               }
             },

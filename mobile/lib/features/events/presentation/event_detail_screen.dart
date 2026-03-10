@@ -111,7 +111,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             const Text("Register"),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: _selectedCategoryId,
+              initialValue: _selectedCategoryId,
               items: categories
                   .map(
                     (c) => DropdownMenuItem(
@@ -135,7 +135,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       final options = [profile, ...kids];
                       _selectedUserId ??= options.first.id;
                       return DropdownButtonFormField<String>(
-                        value: _selectedUserId,
+                        initialValue: _selectedUserId,
                         items: options
                             .map(
                               (user) => DropdownMenuItem(
