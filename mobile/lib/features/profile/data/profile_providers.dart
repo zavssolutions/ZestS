@@ -11,3 +11,7 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 final cachedProfileProvider = FutureProvider<ProfileModel?>((ref) async {
   return ref.watch(profileRepositoryProvider).readCachedProfile();
 });
+
+final kidsProvider = FutureProvider<List<ProfileModel>>((ref) async {
+  return ref.watch(profileRepositoryProvider).fetchKids();
+});

@@ -73,7 +73,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       : () async {
                           final ok = await ref.read(authControllerProvider.notifier).signInWithGoogle();
                           if (ok && context.mounted) {
-                            context.go("/home");
+                            context.go("/");
                           }
                         },
                 ),

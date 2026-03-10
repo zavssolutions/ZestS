@@ -26,6 +26,14 @@ class EventsRepository {
     final data = response.data ?? {};
     return (data["share_link"] as String?) ?? "";
   }
+
+  Future<List<RegistrationModel>> fetchMyRegistrations() async {
+    final response = await _dio.get<List<dynamic>>("/events/registrations/me");
+    final data = response.data ?? [];
+    return data
+        .map((e) => RegistrationModel.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
 }
 
 final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
@@ -34,4 +42,8 @@ final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
 
 final upcomingEventsProvider = FutureProvider<List<EventModel>>((ref) async {
   return ref.watch(eventsRepositoryProvider).fetchUpcomingEvents();
+});
+
+final registrationsProvider = FutureProvider<List<RegistrationModel>>((ref) async {
+  return ref.watch(eventsRepositoryProvider).fetchMyRegistrations();
 });

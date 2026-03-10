@@ -66,7 +66,7 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
               onPressed: () async {
                 final ok = await ref.read(authControllerProvider.notifier).verifyOtp(_otpController.text.trim());
                 if (ok && context.mounted) {
-                  context.go("/home");
+                  context.go("/");
                 }
               },
             ),

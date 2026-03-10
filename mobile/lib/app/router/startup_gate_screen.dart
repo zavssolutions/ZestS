@@ -30,6 +30,9 @@ class StartupGateScreen extends ConsumerWidget {
             case StartupDestination.forceUpdate:
               context.go("/force-update");
               break;
+            case StartupDestination.profileCompletion:
+              context.go("/profile-complete");
+              break;
           }
         });
         return const AppLoadingScreen();

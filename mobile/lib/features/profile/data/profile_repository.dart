@@ -2,6 +2,7 @@
 
 import "package:dio/dio.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:intl/intl.dart";
 
 import "../../../core/constants.dart";
 import "../../../core/storage.dart";
@@ -23,6 +24,28 @@ class ProfileRepository {
     return profile;
   }
 
+  Future<ProfileModel> updateProfile({
+    required String firstName,
+    required String lastName,
+    DateTime? dob,
+  }) async {
+    final payload = <String, dynamic>{
+      "first_name": firstName,
+      "last_name": lastName,
+      "favorite_sport": "skating",
+    };
+    if (dob != null) {
+      payload["dob"] = DateFormat("yyyy-MM-dd").format(dob);
+    }
+    final response = await _dio.put<Map<String, dynamic>>("/users/me", data: payload);
+    final data = response.data ?? {};
+    final profile = ProfileModel.fromJson(data);
+
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await prefs.setString(kProfileCacheKey, jsonEncode(profile.toJson()));
+    return profile;
+  }
+
   Future<ProfileModel?> readCachedProfile() async {
     final prefs = await _ref.read(sharedPreferencesProvider.future);
     final raw = prefs.getString(kProfileCacheKey);
@@ -35,5 +58,30 @@ class ProfileRepository {
   Future<void> clearCache() async {
     final prefs = await _ref.read(sharedPreferencesProvider.future);
     await prefs.remove(kProfileCacheKey);
+  }
+
+  Future<List<ProfileModel>> fetchKids() async {
+    final response = await _dio.get<List<dynamic>>("/users/me/kids");
+    final data = response.data ?? [];
+    return data
+        .map((e) => ProfileModel.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<ProfileModel> addKid({
+    required String firstName,
+    required String lastName,
+    required DateTime dob,
+    required String gender,
+  }) async {
+    final payload = <String, dynamic>{
+      "first_name": firstName,
+      "last_name": lastName,
+      "dob": DateFormat("yyyy-MM-dd").format(dob),
+      "gender": gender,
+    };
+    final response = await _dio.post<Map<String, dynamic>>("/users/me/kids", data: payload);
+    final data = response.data ?? {};
+    return ProfileModel.fromJson(data);
   }
 }

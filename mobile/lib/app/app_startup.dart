@@ -7,8 +7,9 @@ import "../core/remote_config_service.dart";
 import "../core/storage.dart";
 import "../features/auth/data/auth_token_store.dart";
 import "../features/profile/data/profile_providers.dart";
+import "../features/profile/data/profile_model.dart";
 
-enum StartupDestination { home, onboarding, login, forceUpdate }
+enum StartupDestination { home, onboarding, login, forceUpdate, profileCompletion }
 
 final remoteConfigProvider = FutureProvider<RemoteConfigService>((ref) async {
   return RemoteConfigService.create();
@@ -26,11 +27,15 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
   if (currentUser != null) {
     final idToken = await currentUser.getIdToken(true);
     ref.read(authTokenStoreProvider).token = idToken;
+    ProfileModel? profile;
     try {
-      await ref.read(profileRepositoryProvider).fetchProfile();
+      profile = await ref.read(profileRepositoryProvider).fetchProfile();
     } catch (_) {
       // Fallback to cached profile if API is not reachable during startup.
-      await ref.read(profileRepositoryProvider).readCachedProfile();
+      profile = await ref.read(profileRepositoryProvider).readCachedProfile();
+    }
+    if (profile == null || !profile.hasCompletedProfile) {
+      return StartupDestination.profileCompletion;
     }
     return StartupDestination.home;
   }

@@ -1,4 +1,4 @@
-﻿class EventModel {
+class EventModel {
   const EventModel({
     required this.id,
     required this.title,
@@ -35,6 +35,33 @@
       bannerImageUrl: json["banner_image_url"] as String?,
       latitude: (json["latitude"] as num?)?.toDouble(),
       longitude: (json["longitude"] as num?)?.toDouble(),
+    );
+  }
+}
+
+class RegistrationModel {
+  const RegistrationModel({
+    required this.registrationId,
+    required this.userId,
+    required this.userName,
+    required this.status,
+    required this.event,
+  });
+
+  final String registrationId;
+  final String userId;
+  final String userName;
+  final String status;
+  final EventModel? event;
+
+  factory RegistrationModel.fromJson(Map<String, dynamic> json) {
+    final eventJson = json["event"] as Map<String, dynamic>?;
+    return RegistrationModel(
+      registrationId: json["registration_id"] as String,
+      userId: json["user_id"] as String,
+      userName: (json["user_name"] as String?) ?? "",
+      status: (json["status"] as String?) ?? "pending",
+      event: eventJson == null ? null : EventModel.fromJson(eventJson),
     );
   }
 }

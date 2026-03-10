@@ -12,6 +12,7 @@ import "../../features/home/presentation/about_screen.dart";
 import "../../features/home/presentation/home_screen.dart";
 import "../../features/onboarding/presentation/onboarding_screen.dart";
 import "../../features/profile/presentation/profile_screen.dart";
+import "../../features/profile/presentation/profile_completion_screen.dart";
 import "startup_gate_screen.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -27,6 +28,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: "/phone-auth", builder: (context, state) => const PhoneAuthScreen()),
       GoRoute(path: "/home", builder: (context, state) => const HomeScreen()),
       GoRoute(path: "/profile", builder: (context, state) => const ProfileScreen()),
+      GoRoute(path: "/profile-complete", builder: (context, state) => const ProfileCompletionScreen()),
       GoRoute(path: "/about", builder: (context, state) => const AboutScreen()),
       GoRoute(
         path: "/events/:eventId",

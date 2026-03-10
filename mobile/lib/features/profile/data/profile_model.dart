@@ -7,6 +7,8 @@
     required this.favoriteSport,
     required this.profilePictureUrl,
     required this.parentId,
+    required this.hasCompletedProfile,
+    required this.dob,
   });
 
   final String id;
@@ -16,6 +18,8 @@
   final String? favoriteSport;
   final String? profilePictureUrl;
   final String? parentId;
+  final bool hasCompletedProfile;
+  final String? dob;
 
   String get displayName {
     final name = "${firstName ?? ""} ${lastName ?? ""}".trim();
@@ -33,6 +37,8 @@
       favoriteSport: json["favorite_sport"] as String?,
       profilePictureUrl: json["profile_picture_url"] as String?,
       parentId: json["parent_id"] as String?,
+      hasCompletedProfile: (json["has_completed_profile"] as bool?) ?? false,
+      dob: json["dob"] as String?,
     );
   }
 
@@ -45,6 +51,8 @@
       "favorite_sport": favoriteSport,
       "profile_picture_url": profilePictureUrl,
       "parent_id": parentId,
+      "has_completed_profile": hasCompletedProfile,
+      "dob": dob,
     };
   }
 }

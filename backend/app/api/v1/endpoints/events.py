@@ -109,6 +109,33 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
     return {"status": "ok", "registration_id": str(registration.id)}
 
 
+@router.get("/registrations/me", response_model=list[dict])
+def list_my_registrations(current_user: CurrentUser, session: SessionDep) -> list[dict]:
+    user_ids: list[UUID] = [current_user.id]
+    name_map: dict[UUID, str] = {current_user.id: current_user.first_name or "User"}
+
+    if current_user.role == UserRole.PARENT:
+        kids = session.exec(select(User).where(User.parent_id == current_user.id)).all()
+        for kid in kids:
+            user_ids.append(kid.id)
+            name_map[kid.id] = f"{kid.first_name or ''} {kid.last_name or ''}".strip() or "Kid"
+
+    registrations = session.exec(select(EventRegistration).where(EventRegistration.user_id.in_(user_ids))).all()
+    results: list[dict] = []
+    for reg in registrations:
+        event = session.get(Event, reg.event_id)
+        results.append(
+            {
+                "registration_id": str(reg.id),
+                "user_id": str(reg.user_id),
+                "user_name": name_map.get(reg.user_id, ""),
+                "status": reg.status,
+                "event": EventOut.model_validate(event) if event else None,
+            }
+        )
+    return results
+
+
 @router.post("/{event_id}/share-link", response_model=dict)
 def generate_event_share_link(event_id: UUID, current_user: CurrentUser) -> dict:
     deep_link = f"https://zests.app.link/event/{event_id}?referrer={current_user.id}"

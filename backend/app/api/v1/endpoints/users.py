@@ -2,6 +2,7 @@
 from sqlmodel import select
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
+from app.core.config import get_settings
 from app.models.enums import Gender, UserRole
 from app.models.user import User
 from app.schemas.user import KidCreate, UserProfileOut, UserProfileUpsert
@@ -32,8 +33,9 @@ def add_kid(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.PARENT)),
 ) -> User:
+    settings = get_settings()
     kids_count = session.exec(select(User).where(User.parent_id == current_user.id)).all()
-    if len(kids_count) >= 3:
+    if len(kids_count) >= settings.max_kids_per_parent:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Maximum kids limit reached")
 
     kid = User(

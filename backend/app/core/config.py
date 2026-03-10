@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     payments_enabled: bool = Field(default=False, alias="PAYMENTS_ENABLED")
     phone_auth_enabled: bool = Field(default=True, alias="PHONE_AUTH_ENABLED")
     google_auth_enabled: bool = Field(default=True, alias="GOOGLE_AUTH_ENABLED")
+    max_kids_per_parent: int = Field(default=3, alias="MAX_KIDS_PER_PARENT")
 
 
 @lru_cache
