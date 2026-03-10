@@ -1,4 +1,4 @@
-﻿import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/notification_service.dart";
 import "../../../core/permission_service.dart";
@@ -62,6 +62,20 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(loading: false);
     } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
+    }
+  }
+
+  Future<bool> devLogin() async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      // Bypasses Firebase completely for local testing
+      _ref.read(authTokenStoreProvider).token = "dev_bypass_token";
+      await _ref.read(profileRepositoryProvider).fetchProfile();
+      state = state.copyWith(loading: false);
+      return true;
+    } catch (e) {
+      state = state.copyWith(loading: false, error: e.toString());
+      return false;
     }
   }
 

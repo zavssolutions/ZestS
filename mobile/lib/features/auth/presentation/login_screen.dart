@@ -1,4 +1,4 @@
-﻿import "package:flutter/material.dart";
+import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:url_launcher/url_launcher.dart";
@@ -83,6 +83,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: !_acceptedTerms ? null : () => context.push("/phone-auth"),
                   child: const Text("Verify with Phone Number"),
                 ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () async {
+                  final ok = await ref.read(authControllerProvider.notifier).devLogin();
+                  if (ok && context.mounted) {
+                    context.go("/");
+                  }
+                },
+                child: const Text("Use Developer Login (Bypass)", style: TextStyle(color: Colors.grey)),
+              ),
             ],
           ),
         ),
