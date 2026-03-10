@@ -3,9 +3,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 
-from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep, require_roles
+from app.api.deps import OptionalCurrentUser, SessionDep, require_roles
 from app.models.content import StaticPage, SupportIssue
 from app.models.enums import UserRole
+from app.models.user import User
 from app.schemas.content import StaticPageOut, SupportIssueCreate
 
 router = APIRouter(tags=["content"])
@@ -50,7 +51,7 @@ def upsert_page(
     slug: str,
     payload: StaticPageOut,
     session: SessionDep,
-    _: CurrentUser = Depends(require_roles(UserRole.ADMIN)),
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> StaticPage:
     page = session.exec(select(StaticPage).where(StaticPage.slug == slug)).first()
     if page is None:

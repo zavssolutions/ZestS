@@ -7,6 +7,7 @@ from sqlmodel import select
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.models.enums import EventStatus, UserRole
 from app.models.event import Event, EventRegistration, Referral
+from app.models.user import User
 from app.schemas.event import (
     EventCreate,
     EventOut,
@@ -64,7 +65,7 @@ def get_event(event_id: UUID, session: SessionDep) -> dict:
 def create_event(
     payload: EventCreate,
     session: SessionDep,
-    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
     event = Event(**payload.model_dump(), organizer_user_id=current_user.id)
     session.add(event)
@@ -79,7 +80,7 @@ def update_event_status(
     event_id: UUID,
     payload: EventStatusUpdate,
     session: SessionDep,
-    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
     event = session.get(Event, event_id)
     if event is None:
