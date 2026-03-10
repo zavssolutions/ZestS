@@ -49,8 +49,8 @@ def about_page(session: SessionDep) -> StaticPage:
 def upsert_page(
     slug: str,
     payload: StaticPageOut,
-    _: CurrentUser = Depends(require_roles(UserRole.ADMIN)),
     session: SessionDep,
+    _: CurrentUser = Depends(require_roles(UserRole.ADMIN)),
 ) -> StaticPage:
     page = session.exec(select(StaticPage).where(StaticPage.slug == slug)).first()
     if page is None:

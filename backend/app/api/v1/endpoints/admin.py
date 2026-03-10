@@ -14,8 +14,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 @router.get("/stats")
 def dashboard_stats(
-    _: User = Depends(require_roles(UserRole.ADMIN)),
     session: SessionDep,
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> dict:
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start = today_start - timedelta(days=1)
@@ -52,8 +52,8 @@ def dashboard_stats(
 @router.put("/log-level/{level}")
 def set_log_level(
     level: str,
-    _: User = Depends(require_roles(UserRole.ADMIN)),
     session: SessionDep,
+    _: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> dict:
     setting = session.get(SystemSetting, "log_level")
     if setting is None:

@@ -63,8 +63,8 @@ def get_event(event_id: UUID, session: SessionDep) -> dict:
 @router.post("", response_model=EventOut)
 def create_event(
     payload: EventCreate,
-    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
     session: SessionDep,
+    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
     event = Event(**payload.model_dump(), organizer_user_id=current_user.id)
     session.add(event)
@@ -78,8 +78,8 @@ def create_event(
 def update_event_status(
     event_id: UUID,
     payload: EventStatusUpdate,
-    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
     session: SessionDep,
+    current_user: CurrentUser = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
     event = session.get(Event, event_id)
     if event is None:

@@ -29,8 +29,8 @@ def update_me(payload: UserProfileUpsert, current_user: CurrentUser, session: Se
 @router.post("/me/kids", response_model=UserProfileOut)
 def add_kid(
     payload: KidCreate,
-    current_user: CurrentUser = Depends(require_roles(UserRole.PARENT)),
     session: SessionDep,
+    current_user: CurrentUser = Depends(require_roles(UserRole.PARENT)),
 ) -> User:
     kids_count = session.exec(select(User).where(User.parent_id == current_user.id)).all()
     if len(kids_count) >= 3:
@@ -54,8 +54,8 @@ def add_kid(
 
 @router.get("/me/kids", response_model=list[UserProfileOut])
 def list_kids(
-    current_user: CurrentUser = Depends(require_roles(UserRole.PARENT)),
     session: SessionDep,
+    current_user: CurrentUser = Depends(require_roles(UserRole.PARENT)),
 ) -> list[User]:
     return session.exec(select(User).where(User.parent_id == current_user.id)).all()
 
