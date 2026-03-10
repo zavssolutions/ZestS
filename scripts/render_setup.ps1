@@ -5,6 +5,8 @@
   [string]$Branch = "main",
   [string]$BackendName = "zests-backend",
   [string]$WorkerName = "zests-celery-worker",
+  [string]$FirebaseServiceAccountJsonPath = "",
+  [string]$GcpStorageCredentialsJsonPath = "",
   [string]$FirebaseServiceAccountJson = "",
   [string]$GcpStorageCredentialsJson = "",
   [string]$GcpStorageBucket = ""
@@ -21,6 +23,14 @@ function Invoke-RenderPost([string]$url, [hashtable]$body) {
 
 function Invoke-RenderPut([string]$url, [array]$body) {
   return Invoke-RestMethod -Method Put -Uri $url -Headers $headers -Body ($body | ConvertTo-Json -Depth 20 -Compress)
+}
+
+if ($FirebaseServiceAccountJsonPath -and (Test-Path $FirebaseServiceAccountJsonPath)) {
+  $FirebaseServiceAccountJson = Get-Content -Raw $FirebaseServiceAccountJsonPath
+}
+
+if ($GcpStorageCredentialsJsonPath -and (Test-Path $GcpStorageCredentialsJsonPath)) {
+  $GcpStorageCredentialsJson = Get-Content -Raw $GcpStorageCredentialsJsonPath
 }
 
 # 1) Provision Postgres + Key Value

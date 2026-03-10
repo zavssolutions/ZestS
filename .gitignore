@@ -25,3 +25,6 @@ android/.gradle/
 *.jks
 *.p12
 firebase-service-account*.json
+
+# Local diagnostics
+scripts/_gcp_*.ps1
