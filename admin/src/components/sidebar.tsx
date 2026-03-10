@@ -1,8 +1,13 @@
-﻿export function Sidebar() {
+export function Sidebar() {
   const nav = [
     ["/", "Dashboard"],
     ["/events", "Events"],
     ["/users", "Users"],
+    ["/banners", "Banners"],
+    ["/sponsors", "Sponsors"],
+    ["/results", "Event Results"],
+    ["/support", "User Issues"],
+    ["/logs", "Logs"],
     ["/content", "Misc"],
   ];
 

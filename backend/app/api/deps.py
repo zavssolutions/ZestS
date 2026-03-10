@@ -44,8 +44,15 @@ def get_current_user(
     if not firebase_uid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid auth payload")
 
+    def _is_admin(email: str | None) -> bool:
+        if not email:
+            return False
+        allowed = [item.strip().lower() for item in settings.admin_emails.split(",") if item.strip()]
+        return email.lower() in allowed
+
     user = session.exec(select(User).where(User.firebase_uid == firebase_uid)).first()
     if user is None:
+        role = UserRole.ADMIN if _is_admin(decoded.get("email")) else UserRole.PARENT
         user = User(
             firebase_uid=firebase_uid,
             google_uid=decoded.get("user_id"),
@@ -53,8 +60,13 @@ def get_current_user(
             mobile_no=decoded.get("phone_number"),
             first_name=decoded.get("name"),
             profile_picture_url=decoded.get("picture"),
-            role=UserRole.PARENT,
+            role=role,
         )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+    elif _is_admin(user.email) and user.role != UserRole.ADMIN:
+        user.role = UserRole.ADMIN
         session.add(user)
         session.commit()
         session.refresh(user)

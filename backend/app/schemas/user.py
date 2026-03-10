@@ -1,4 +1,4 @@
-﻿from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -41,3 +41,28 @@ class KidCreate(BaseModel):
 
 class UserRoleUpdate(BaseModel):
     role: UserRole
+
+
+class UserUpdate(BaseModel):
+    role: Optional[UserRole] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    mobile_no: Optional[str] = None
+    email: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_verified: Optional[bool] = None
+
+
+class UserAdminOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    parent_id: Optional[UUID]
+    role: UserRole
+    first_name: Optional[str]
+    last_name: Optional[str]
+    mobile_no: Optional[str]
+    email: Optional[str]
+    is_active: bool
+    is_verified: bool
+    created_at: datetime

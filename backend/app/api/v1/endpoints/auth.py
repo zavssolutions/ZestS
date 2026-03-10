@@ -2,6 +2,7 @@
 from sqlmodel import select
 
 from app.api.deps import SessionDep
+from app.core.config import get_settings
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.auth import AuthTokenRequest, AuthTokenResponse
@@ -25,6 +26,10 @@ def exchange_token(payload: AuthTokenRequest, session: SessionDep) -> AuthTokenR
     is_new = user is None
 
     if user is None:
+        settings = get_settings()
+        allowed = [item.strip().lower() for item in settings.admin_emails.split(",") if item.strip()]
+        email = decoded.get("email")
+        role = UserRole.ADMIN if email and email.lower() in allowed else UserRole.PARENT
         user = User(
             firebase_uid=firebase_uid,
             google_uid=decoded.get("user_id"),
@@ -32,7 +37,7 @@ def exchange_token(payload: AuthTokenRequest, session: SessionDep) -> AuthTokenR
             mobile_no=decoded.get("phone_number"),
             first_name=decoded.get("name"),
             profile_picture_url=decoded.get("picture"),
-            role=UserRole.PARENT,
+            role=role,
         )
         session.add(user)
         session.commit()
