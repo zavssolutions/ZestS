@@ -1,5 +1,6 @@
 ﻿import "package:flutter_riverpod/flutter_riverpod.dart";
 
+import "../../../core/notification_service.dart";
 import "../../../core/permission_service.dart";
 import "../../profile/data/profile_providers.dart";
 import "../data/auth_repository.dart";
@@ -39,6 +40,7 @@ class AuthController extends StateNotifier<AuthState> {
       final result = await _repo.signInWithGoogle();
       _ref.read(authTokenStoreProvider).token = result.token;
       await _ref.read(profileRepositoryProvider).fetchProfile();
+      await _ref.read(notificationServiceProvider).registerDeviceToken();
       if (result.isNewUser) {
         await PermissionService().requestOptionalPermissions();
       }
@@ -78,6 +80,7 @@ class AuthController extends StateNotifier<AuthState> {
       );
       _ref.read(authTokenStoreProvider).token = result.token;
       await _ref.read(profileRepositoryProvider).fetchProfile();
+      await _ref.read(notificationServiceProvider).registerDeviceToken();
       if (result.isNewUser) {
         await PermissionService().requestOptionalPermissions();
       }

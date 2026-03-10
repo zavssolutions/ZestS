@@ -39,6 +39,29 @@ class EventModel {
   }
 }
 
+class EventCategoryModel {
+  const EventCategoryModel({
+    required this.id,
+    required this.eventId,
+    required this.name,
+    required this.price,
+  });
+
+  final String id;
+  final String eventId;
+  final String name;
+  final double price;
+
+  factory EventCategoryModel.fromJson(Map<String, dynamic> json) {
+    return EventCategoryModel(
+      id: json["id"] as String,
+      eventId: json["event_id"] as String,
+      name: json["name"] as String,
+      price: (json["price"] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
 class RegistrationModel {
   const RegistrationModel({
     required this.registrationId,

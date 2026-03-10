@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 
 from app.api.deps import OptionalCurrentUser, SessionDep, require_roles
-from app.models.content import StaticPage, SupportIssue
+from app.models.content import Banner, StaticPage, SupportIssue
+from app.schemas.content import BannerOut
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.content import StaticPageOut, SupportIssueCreate
@@ -44,6 +45,16 @@ def terms_page(session: SessionDep) -> StaticPage:
 @router.get("/pages/about-us", response_model=StaticPageOut)
 def about_page(session: SessionDep) -> StaticPage:
     return _get_or_seed_page(session, "about-us", "About Us", ABOUT_US_DEFAULT)
+
+
+@router.get("/banners", response_model=list[BannerOut])
+def list_active_banners(session: SessionDep) -> list[Banner]:
+    statement = (
+        select(Banner)
+        .where(Banner.is_active == True)  # noqa: E712
+        .order_by(Banner.display_order, Banner.created_at.desc())
+    )
+    return session.exec(statement).all()
 
 
 @router.put("/admin/pages/{slug}", response_model=StaticPageOut)

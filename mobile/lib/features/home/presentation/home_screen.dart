@@ -8,6 +8,8 @@ import "package:skeletonizer/skeletonizer.dart";
 import "../../../features/auth/application/auth_controller.dart";
 import "../../../features/events/data/event_model.dart";
 import "../../../features/events/data/events_repository.dart";
+import "../../../features/home/data/banner_model.dart";
+import "../../../features/home/data/banners_repository.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
 import "../../../features/profile/data/profile_repository.dart";
@@ -28,12 +30,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final profileAsync = ref.watch(cachedProfileProvider);
     final kidsAsync = ref.watch(kidsProvider);
     final registrationsAsync = ref.watch(registrationsProvider);
+    final bannersAsync = ref.watch(bannersProvider);
 
     final pages = <Widget>[
       _buildDashboard(context, profileAsync, kidsAsync),
       _buildSearch(),
       _buildSchedule(registrationsAsync),
-      _buildHome(eventsAsync),
+      _buildHome(eventsAsync, bannersAsync),
     ];
 
     return Scaffold(
@@ -59,12 +62,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ListTile(
                     leading: const Icon(Icons.settings),
                     title: const Text("Settings"),
-                    onTap: () {},
+                    onTap: () => context.push("/settings"),
                   ),
                 ListTile(
                   leading: const Icon(Icons.help_outline),
                   title: const Text("Support / Help"),
-                  onTap: () {},
+                  onTap: () => context.push("/support"),
                 ),
                 ListTile(
                   leading: const Icon(Icons.info_outline),
@@ -100,21 +103,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHome(AsyncValue<List<EventModel>> eventsAsync) {
+  Widget _buildHome(
+    AsyncValue<List<EventModel>> eventsAsync,
+    AsyncValue<List<BannerModel>> bannersAsync,
+  ) {
     return eventsAsync.when(
       data: (events) {
+        final bannerWidget = bannersAsync.when(
+          data: (banners) {
+            if (banners.isEmpty) {
+              return const Center(child: Text("No banners"));
+            }
+            final banner = banners.first;
+            return ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: banner.imageUrl,
+                height: 130,
+                fit: BoxFit.cover,
+              ),
+            );
+          },
+          error: (error, stackTrace) => const Center(child: Text("Unable to load banner")),
+          loading: () => const Center(child: CircularProgressIndicator()),
+        );
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
             _sectionTitle("Banner"),
-            Container(
-              height: 130,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Center(child: Text("Featured Banner")),
-            ),
+            bannerWidget,
             const SizedBox(height: 12),
             _sectionTitle("Common Dashboard"),
             _quickStats(),
@@ -242,7 +259,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildSearch() {
-    return const Center(child: Text("Search coming soon"));
+    final query = ref.watch(searchQueryProvider);
+    final resultsAsync = ref.watch(searchResultsProvider);
+
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          TextField(
+            decoration: const InputDecoration(
+              labelText: "Search events",
+              prefixIcon: Icon(Icons.search),
+            ),
+            onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: resultsAsync.when(
+              data: (events) {
+                if (query.trim().isEmpty) {
+                  return const Center(child: Text("Type to search events"));
+                }
+                if (events.isEmpty) {
+                  return const Center(child: Text("No results"));
+                }
+                return ListView(
+                  children: events
+                      .map(
+                        (event) => Card(
+                          child: ListTile(
+                            title: Text(event.title),
+                            subtitle: Text(event.locationName),
+                            onTap: () => context.push("/events/${event.id}"),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+              error: (error, stackTrace) => const Center(child: Text("Search failed")),
+              loading: () => const Center(child: CircularProgressIndicator()),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showAddKidDialog(BuildContext context) async {

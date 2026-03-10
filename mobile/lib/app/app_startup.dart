@@ -4,6 +4,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../core/constants.dart";
 import "../core/remote_config_service.dart";
+import "../core/notification_service.dart";
 import "../core/storage.dart";
 import "../features/auth/data/auth_token_store.dart";
 import "../features/profile/data/profile_providers.dart";
@@ -34,6 +35,7 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
       // Fallback to cached profile if API is not reachable during startup.
       profile = await ref.read(profileRepositoryProvider).readCachedProfile();
     }
+    await ref.read(notificationServiceProvider).registerDeviceToken();
     if (profile == null || !profile.hasCompletedProfile) {
       return StartupDestination.profileCompletion;
     }

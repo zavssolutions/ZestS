@@ -50,10 +50,36 @@ class EventStatusUpdate(BaseModel):
     status: str
 
 
+class EventCategoryCreate(BaseModel):
+    name: str
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
+    track_type: Optional[str] = None
+    distance: Optional[str] = None
+    gender_restriction: Optional[str] = None
+    max_slots: int = 0
+    price: float = 0
+
+
+class EventCategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    event_id: UUID
+    name: str
+    skate_type: Optional[str]
+    age_group: Optional[str]
+    track_type: Optional[str]
+    distance: Optional[str]
+    gender_restriction: Optional[str]
+    max_slots: int
+    price: float
+
+
 class EventRegistrationCreate(BaseModel):
     event_id: UUID
     category_id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
 
 
 class ReferralAction(BaseModel):

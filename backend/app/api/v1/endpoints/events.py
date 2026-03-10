@@ -6,15 +6,19 @@ from sqlmodel import select
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.models.enums import EventStatus, UserRole
-from app.models.event import Event, EventRegistration, Referral
+from app.models.event import Event, EventCategory, EventRegistration, Referral
 from app.models.user import User
 from app.schemas.event import (
     EventCreate,
+    EventCategoryCreate,
+    EventCategoryOut,
     EventOut,
     EventRegistrationCreate,
     EventStatusUpdate,
     ReferralAction,
 )
+from app.core.config import get_settings
+from app.services.notifications import send_event_status
 from app.services.search_sync import sync_event
 from app.workers.tasks import broadcast_event_status_task
 
@@ -93,7 +97,11 @@ def update_event_status(
     session.refresh(event)
 
     if event.status in (EventStatus.PUBLISHED, EventStatus.CANCELED):
-        broadcast_event_status_task.delay(str(event.id), event.status)
+        settings = get_settings()
+        if settings.celery_enabled:
+            broadcast_event_status_task.delay(str(event.id), event.status)
+        else:
+            send_event_status(session, str(event.id), event.status)
 
     return event
 
@@ -103,7 +111,19 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
     if current_user.role == UserRole.KID and current_user.parent_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Kid profiles cannot login directly")
 
-    registration = EventRegistration(**payload.model_dump())
+    user_id = payload.user_id or current_user.id
+    if payload.user_id and current_user.role != UserRole.PARENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only parents can register a kid")
+    if payload.user_id and current_user.role == UserRole.PARENT:
+        kid = session.get(User, payload.user_id)
+        if kid is None or kid.parent_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid kid profile")
+
+    registration = EventRegistration(
+        event_id=payload.event_id,
+        category_id=payload.category_id,
+        user_id=user_id,
+    )
     session.add(registration)
     session.commit()
     return {"status": "ok", "registration_id": str(registration.id)}
@@ -134,6 +154,25 @@ def list_my_registrations(current_user: CurrentUser, session: SessionDep) -> lis
             }
         )
     return results
+
+
+@router.get("/{event_id}/categories", response_model=list[EventCategoryOut])
+def list_event_categories(event_id: UUID, session: SessionDep) -> list[EventCategory]:
+    return session.exec(select(EventCategory).where(EventCategory.event_id == event_id)).all()
+
+
+@router.post("/{event_id}/categories", response_model=EventCategoryOut)
+def create_event_category(
+    event_id: UUID,
+    payload: EventCategoryCreate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+) -> EventCategory:
+    category = EventCategory(event_id=event_id, **payload.model_dump())
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    return category
 
 
 @router.post("/{event_id}/share-link", response_model=dict)

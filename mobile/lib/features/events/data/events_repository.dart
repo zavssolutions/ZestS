@@ -34,6 +34,40 @@ class EventsRepository {
         .map((e) => RegistrationModel.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
   }
+
+  Future<List<EventCategoryModel>> fetchEventCategories(String eventId) async {
+    final response = await _dio.get<List<dynamic>>("/events/$eventId/categories");
+    final data = response.data ?? [];
+    return data
+        .map((e) => EventCategoryModel.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
+  Future<void> registerForEvent({
+    required String eventId,
+    required String categoryId,
+    String? userId,
+  }) async {
+    await _dio.post(
+      "/events/registrations",
+      data: {
+        "event_id": eventId,
+        "category_id": categoryId,
+        "user_id": userId,
+      },
+    );
+  }
+
+  Future<List<EventModel>> searchEvents(String query) async {
+    final response = await _dio.get<List<dynamic>>(
+      "/search/events",
+      queryParameters: {"q": query},
+    );
+    final data = response.data ?? [];
+    return data
+        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
 }
 
 final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
@@ -46,4 +80,19 @@ final upcomingEventsProvider = FutureProvider<List<EventModel>>((ref) async {
 
 final registrationsProvider = FutureProvider<List<RegistrationModel>>((ref) async {
   return ref.watch(eventsRepositoryProvider).fetchMyRegistrations();
+});
+
+final searchQueryProvider = StateProvider<String>((ref) => "");
+
+final searchResultsProvider = FutureProvider<List<EventModel>>((ref) async {
+  final query = ref.watch(searchQueryProvider);
+  if (query.trim().isEmpty) {
+    return [];
+  }
+  return ref.watch(eventsRepositoryProvider).searchEvents(query.trim());
+});
+
+final eventCategoriesProvider =
+    FutureProvider.family<List<EventCategoryModel>, String>((ref, eventId) async {
+  return ref.watch(eventsRepositoryProvider).fetchEventCategories(eventId);
 });
