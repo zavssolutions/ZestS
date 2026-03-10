@@ -18,4 +18,8 @@ def sync_event(event: Event) -> None:
         "location_name": event.location_name,
         "start_at_utc": event.start_at_utc.isoformat(),
     }
-    _client().index("events").add_documents([payload])
+    try:
+        _client().index("events").add_documents([payload])
+    except Exception:
+        # Search sync should never block source-of-truth writes.
+        return
