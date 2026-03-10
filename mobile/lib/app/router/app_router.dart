@@ -1,4 +1,4 @@
-﻿import "dart:async";
+import "dart:async";
 
 import "package:app_links/app_links.dart";
 import "package:flutter/material.dart";
@@ -18,6 +18,7 @@ import "../../features/profile/data/profile_providers.dart";
 import "../../core/storage.dart";
 import "../../core/api_client.dart";
 import "../../features/profile/presentation/profile_completion_screen.dart";
+import "../../features/admin/presentation/admin_screens.dart";
 import "startup_gate_screen.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -37,6 +38,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: "/settings", builder: (context, state) => const SettingsScreen()),
       GoRoute(path: "/profile-complete", builder: (context, state) => const ProfileCompletionScreen()),
       GoRoute(path: "/about", builder: (context, state) => const AboutScreen()),
+      GoRoute(path: "/admin", builder: (context, state) => const AdminDashboardScreen()),
       GoRoute(
         path: "/events/:eventId",
         builder: (context, state) => EventDetailScreen(eventId: state.pathParameters["eventId"]!),

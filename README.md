@@ -1,42 +1,66 @@
-﻿# ZestS Monorepo
+# ZestS - Production-Grade Sports Event Management Platform
 
-Production-oriented starter for ZestS mobile, backend, and admin.
+ZestS is a comprehensive platform built to simplify the management of sports events, starting with skating. It features a cross-platform mobile app, a robust backend, and an admin dashboard.
 
-## Repository Structure
+## System Architecture
 
-- `mobile/` Flutter app (Riverpod, splash, onboarding, Firebase auth, caching)
-- `backend/` FastAPI + SQLModel + PostgreSQL + Redis + Celery
-- `admin/` Next.js admin (`/admin` base path)
-- `infra/` deployment templates (`render.yaml`)
-- `docs/` architecture, API, testing, deployment docs
-- `scripts/` smoke test and dummy seed scripts
+The project is structured as a monorepo with three core components:
 
-## Startup Flow Implemented (Mobile)
+1. **Mobile Application (`/mobile`)**: A Flutter app (iOS & Android) using Riverpod for state management, Firebase Auth (Google/Phone OOB), and a beautiful UI with skeleton loaders and micro-animations.
+2. **Backend API (`/backend`)**: A highly scalable Python FastAPI application backed by PostgreSQL, using SQLModel, Redis for caching, Celery for task queues, and Firebase Admin for auth validation and FCM push notifications.
+3. **Web Admin Dashboard (`/admin`)**: A Next.js web interface for organizers and administrators to manage events, users, banners, sponsors, and application configuration.
 
-1. Native splash (`flutter_native_splash`)
-2. Auth check (`FirebaseAuth.instance.currentUser`)
-3. First-open onboarding PageView (3 slides)
-4. Login screen with Google/Phone and Terms checkbox
-5. Home with skeleton loaders, events, drawer, and animated nav icons
+## Features Built
 
-## Local Run
+- **Authentication Flow**: Native splash -> PageView Onboarding -> Google/Phone login -> FastAPI secure token exchange.
+- **Role-Based Access**: Specialized profiles and views for Parents (with Kid sub-profiles), Skaters, Trainers, Organizers, and Admins.
+- **Event Management**: Complete CRUD, categorization (age groups, distances, skate types), event publish/cancel notifications via Firebase Cloud Messaging.
+- **Registrations & Results**: Frictionless registration flow for parents and direct participants, including post-event leaderboard results and points caching.
+- **Growth & Marketing**: Referral tracking for app installs and event views with point attribution.
+- **Content Management**: Global dynamic banners, sponsor listings, and static app pages.
+- **Security & Reliability**: Comprehensive role validation middleware, environment-variable configuration, and global API exception handling.
+
+## Local Setup & Development
+
+### Prerequisites
+- Docker & Docker Compose
+- Python 3.12+
+- Flutter SDK 3.11+
+- Node.js 20+
+
+### 1. Start Infrastructure Services
 
 ```bash
 docker compose up -d postgres redis meilisearch
 ```
 
-Backend:
+### 2. Run the Backend
 
 ```bash
 cd backend
 python -m venv .venv
-. .venv/Scripts/Activate.ps1
+
+# On Windows:
+.venv\Scripts\activate
+# On macOS/Linux:
+# source .venv/bin/activate
+
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:app --reload
 ```
 
-Mobile:
+To populate the database with comprehensive dummy data (parents, kids, trainers, events, banners):
+```bash
+python scripts/seed_dummy_data.py
+```
+
+Start the FastAPI server:
+```bash
+uvicorn app.main:app --reload
+```
+API Documentation will be available at: http://localhost:8000/api/v1/docs
+
+### 3. Run Mobile App
 
 ```bash
 cd mobile
@@ -44,7 +68,7 @@ flutter pub get
 flutter run
 ```
 
-Admin:
+### 4. Run Admin Panel
 
 ```bash
 cd admin
@@ -52,24 +76,40 @@ npm install
 npm run dev
 ```
 
-## Build Artifacts
+## Testing & CI/CD
 
-Android AAB:
+Continuous Integration pipelines are defined in `.github/workflows/` utilizing GitHub Actions for all three components.
 
+To run tests locally:
 ```bash
+# Backend unit & integration tests
+cd backend
+pip install pytest httpx
+pytest tests/ -v
+
+# E2E API Smoke test (runs against a live server)
+python scripts/smoke_test.py http://localhost:8000
+
+# Mobile widget tests and static analysis
 cd mobile
-flutter build appbundle --release
+flutter analyze
+flutter test
 ```
 
-iOS IPA:
+## Production Deployment
 
+### Building Mobile Artifacts
 ```bash
 cd mobile
-flutter build ipa --release
+flutter build appbundle --release  # For Google Play Console
+flutter build ipa --release        # For Apple App Store
 ```
 
-## Security Notes
+### Render Infrastructure Updates
+Changes merged to the `main` branch are automatically deployed via Render triggers connected to the GitHub repository:
+- **Web Service** (`zests-backend`, region: Singapore) automatically spins up Python using `uvicorn main:app`
+- **PostgreSQL Database** (`zests-db`, region: Singapore)
+- **Redis Instance** (`zests-redis`, region: Singapore)
+- **Web Service** (`zests-admin`, region: Singapore) running Next.js
 
-- Never commit `.jks`, `.p12`, Firebase service account JSON, or production DB URLs.
-- Keep secrets in environment variables only.
-- Backend write routes are role-restricted.
+See `infra/render.yaml` for complete Infrastructure as Code configuration.

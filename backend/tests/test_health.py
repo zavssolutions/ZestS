@@ -1,0 +1,20 @@
+"""Basic health and smoke tests."""
+
+
+def test_healthz(client):
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
+
+def test_docs_endpoint(client):
+    response = client.get("/api/v1/docs")
+    assert response.status_code == 200
+
+
+def test_openapi_json(client):
+    response = client.get("/api/v1/openapi.json")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["info"]["title"] == "ZestS API"

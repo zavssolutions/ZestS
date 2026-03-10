@@ -74,6 +74,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   title: const Text("About Us"),
                   onTap: () => context.push("/about"),
                 ),
+                if (profile?.role == "admin")
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings),
+                    title: const Text("Admin Dashboard"),
+                    onTap: () => context.push("/admin"),
+                  ),
                 if (!isSubProfile)
                   ListTile(
                     leading: const Icon(Icons.logout),
