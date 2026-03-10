@@ -10,8 +10,8 @@ router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 @router.post("/image", response_model=dict)
 async def upload_image(
-    file: UploadFile = File(...),
     current_user: CurrentUser,
+    file: UploadFile = File(...),
 ) -> dict:
     data = await file.read()
     object_name = f"uploads/{current_user.id}/{file.filename}"
