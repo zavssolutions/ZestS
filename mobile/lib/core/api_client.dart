@@ -1,4 +1,4 @@
-﻿import "package:dio/dio.dart";
+import "package:dio/dio.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "constants.dart";
@@ -8,8 +8,8 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: kApiBaseUrl,
-      connectTimeout: const Duration(seconds: 12),
-      receiveTimeout: const Duration(seconds: 12),
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(seconds: 60),
     ),
   );
 

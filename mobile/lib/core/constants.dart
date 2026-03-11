@@ -1,11 +1,11 @@
-﻿const kApiBaseUrl = String.fromEnvironment(
+const kApiBaseUrl = String.fromEnvironment(
   "API_BASE_URL",
-  defaultValue: "http://localhost:8000/api/v1",
+  defaultValue: "https://zests-backend.onrender.com/api/v1",
 );
 
 const kTermsPageUrl = String.fromEnvironment(
   "TERMS_PAGE_URL",
-  defaultValue: "https://xyz.render.com/api/v1/pages/terms-and-conditions",
+  defaultValue: "https://zests-backend.onrender.com/api/v1/pages/terms-and-conditions",
 );
 
 const kProfileCacheKey = "cached_profile";

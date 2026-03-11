@@ -1,3 +1,4 @@
+import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/notification_service.dart";
@@ -46,7 +47,9 @@ class AuthController extends StateNotifier<AuthState> {
       }
       state = state.copyWith(loading: false);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint("Google Sign-in Error: $e");
+      debugPrintStack(stackTrace: st);
       state = state.copyWith(loading: false, error: e.toString());
       return false;
     }

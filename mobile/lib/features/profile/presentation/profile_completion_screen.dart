@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 
 import "../data/profile_providers.dart";
+import "../../../app/app_startup.dart";
 
 class ProfileCompletionScreen extends ConsumerStatefulWidget {
   const ProfileCompletionScreen({super.key});
@@ -36,6 +37,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             dob: _dob,
           );
       ref.invalidate(cachedProfileProvider);
+      ref.invalidate(startupDestinationProvider);
+      
       if (!mounted) return;
       context.go("/home");
     } catch (e) {

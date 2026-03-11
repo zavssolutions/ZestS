@@ -1,4 +1,4 @@
-﻿import "package:flutter/material.dart";
+import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 
@@ -14,7 +14,18 @@ class StartupGateScreen extends ConsumerWidget {
 
     return startup.when(
       loading: () => const AppLoadingScreen(),
-      error: (error, stackTrace) => const Scaffold(body: Center(child: Text("Startup failed"))),
+      error: (error, stackTrace) {
+        debugPrint("Startup Error: $error");
+        debugPrintStack(stackTrace: stackTrace);
+        return Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text("Startup failed:\n$error"),
+            ),
+          ),
+        );
+      },
       data: (destination) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           switch (destination) {
