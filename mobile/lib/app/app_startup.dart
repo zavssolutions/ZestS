@@ -51,7 +51,7 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
   if (isFirstOpen) {
     return StartupDestination.onboarding;
   }
-  return StartupDestination.login;
+  return StartupDestination.home;
 });
 
 final appStartupProvider = Provider<void>((ref) {

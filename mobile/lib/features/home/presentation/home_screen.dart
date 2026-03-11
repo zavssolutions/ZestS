@@ -34,7 +34,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final pages = <Widget>[
       _buildDashboard(context, profileAsync, kidsAsync),
       _buildSearch(),
-      _buildSchedule(registrationsAsync),
+      _buildSchedule(context, registrationsAsync, profileAsync),
       _buildHome(eventsAsync, bannersAsync),
     ];
 
@@ -79,7 +79,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     title: const Text("Admin Dashboard"),
                     onTap: () => context.push("/admin"),
                   ),
-                if (!isSubProfile)
+                if (!isSubProfile && profile != null)
                   ListTile(
                     leading: const Icon(Icons.logout),
                     title: const Text("Logout"),
@@ -88,6 +88,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       if (!context.mounted) return;
                       context.go("/login");
                     },
+                  ),
+                if (profile == null)
+                  ListTile(
+                    leading: const Icon(Icons.login),
+                    title: const Text("Login / Sign Up"),
+                    onTap: () => context.push("/login"),
                   ),
               ],
             );
@@ -189,7 +195,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       error: (error, stackTrace) => const Center(child: Text("Unable to load dashboard")),
       data: (profile) {
         if (profile == null) {
-          return const Center(child: Text("Login required for dashboard"));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("Login required for dashboard"),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.push("/login"),
+                  child: const Text("Login / Sign Up"),
+                ),
+              ],
+            ),
+          );
         }
         final isParent = profile.role == "parent";
         if (!isParent) {
@@ -238,7 +256,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildSchedule(AsyncValue<List<RegistrationModel>> registrationsAsync) {
+  Widget _buildSchedule(BuildContext context, AsyncValue<List<RegistrationModel>> registrationsAsync, AsyncValue<ProfileModel?> profileAsync) {
+    if (profileAsync.valueOrNull == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Login required to view schedule"),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.push("/login"),
+              child: const Text("Login / Sign Up"),
+            ),
+          ],
+        ),
+      );
+    }
+
     return registrationsAsync.when(
       data: (registrations) {
         if (registrations.isEmpty) {
