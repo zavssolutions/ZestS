@@ -21,7 +21,12 @@ class RemoteConfigService {
       "minimum_version_ios": "1.0.0",
       "force_update_enabled": false,
     });
-    await instance.fetchAndActivate();
+    try {
+      await instance.fetchAndActivate();
+    } catch (_) {
+      // If fetch fails (no network, Firebase not configured, etc.),
+      // the safe defaults set above will be used automatically.
+    }
     return RemoteConfigService(instance);
   }
 
