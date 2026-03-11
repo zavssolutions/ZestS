@@ -15,7 +15,7 @@ class RemoteConfigService {
       ),
     );
     await instance.setDefaults(const {
-      "phone_auth_enabled": true,
+      "phone_auth_enabled": false,
       "google_auth_enabled": true,
       "minimum_version_android": "1.0.0",
       "minimum_version_ios": "1.0.0",
