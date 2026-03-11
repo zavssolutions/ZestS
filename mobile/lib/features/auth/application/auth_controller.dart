@@ -68,19 +68,8 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
-  Future<bool> devLogin() async {
-    state = state.copyWith(loading: true, error: null);
-    try {
-      // Bypasses Firebase completely for local testing
-      _ref.read(authTokenStoreProvider).token = "dev_bypass_token";
-      await _ref.read(profileRepositoryProvider).fetchProfile();
-      state = state.copyWith(loading: false);
-      return true;
-    } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
-      return false;
-    }
-  }
+
+
 
   Future<bool> verifyOtp(String otp) async {
     final verificationId = state.verificationId;

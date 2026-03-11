@@ -83,16 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: !_acceptedTerms ? null : () => context.push("/phone-auth"),
                   child: const Text("Verify with Phone Number"),
                 ),
-              const SizedBox(height: 24),
-              TextButton(
-                onPressed: () async {
-                  final ok = await ref.read(authControllerProvider.notifier).devLogin();
-                  if (ok && context.mounted) {
-                    context.go("/");
-                  }
-                },
-                child: const Text("Use Developer Login (Bypass)", style: TextStyle(color: Colors.grey)),
-              ),
+
             ],
           ),
         ),
