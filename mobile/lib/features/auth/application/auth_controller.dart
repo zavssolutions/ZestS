@@ -50,8 +50,32 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(loading: false);
       return true;
     } catch (e, st) {
+      if (e.toString().contains("cancelled by user")) {
+        state = state.copyWith(loading: false);
+        return false;
+      }
       debugPrint("Google Sign-in Error: $e");
       debugPrintStack(stackTrace: st);
+      state = state.copyWith(loading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  Future<bool> signInWithEmail(String email, String password) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      final result = await _repo.signInWithEmail(email, password);
+      _ref.read(authTokenStoreProvider).token = result.token;
+      await _ref.read(profileRepositoryProvider).fetchProfile();
+      _ref.invalidate(cachedProfileProvider);
+      _ref.invalidate(kidsProvider);
+      await _ref.read(notificationServiceProvider).registerDeviceToken();
+      if (result.isNewUser) {
+        await PermissionService().requestOptionalPermissions();
+      }
+      state = state.copyWith(loading: false);
+      return true;
+    } catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
       return false;
     }

@@ -1,4 +1,4 @@
-﻿import "package:dio/dio.dart";
+import "package:dio/dio.dart";
 import "package:firebase_auth/firebase_auth.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:google_sign_in/google_sign_in.dart";
@@ -16,25 +16,50 @@ class AuthRepository {
   AuthRepository(this._dio);
 
   final Dio _dio;
-  bool _isGoogleInitialized = false;
-
-  Future<void> _ensureGoogleInitialized() async {
-    if (_isGoogleInitialized) {
-      return;
-    }
-    await GoogleSignIn.instance.initialize();
-    _isGoogleInitialized = true;
-  }
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: <String>[
+      "email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+    ],
+  );
 
   Future<AuthLoginResult> signInWithGoogle() async {
-    await _ensureGoogleInitialized();
-    final account = await GoogleSignIn.instance.authenticate();
-    final auth = account.authentication;
+    final account = await _googleSignIn.signIn();
+    if (account == null) {
+      throw Exception("Sign-in cancelled by user");
+    }
+    final auth = await account.authentication;
     final credential = GoogleAuthProvider.credential(
       idToken: auth.idToken,
+      accessToken: auth.accessToken,
     );
 
     final userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+    final idToken = await userCredential.user?.getIdToken(true);
+    if (idToken == null) {
+      throw Exception("Unable to get Firebase ID token");
+    }
+    return _exchangeToken(idToken);
+  }
+
+  Future<AuthLoginResult> signInWithEmail(String email, String password) async {
+    UserCredential userCredential;
+    try {
+      userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == "user-not-found") {
+        userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } else {
+        rethrow;
+      }
+    }
+
     final idToken = await userCredential.user?.getIdToken(true);
     if (idToken == null) {
       throw Exception("Unable to get Firebase ID token");
@@ -86,8 +111,7 @@ class AuthRepository {
 
   Future<void> signOut() async {
     await FirebaseAuth.instance.signOut();
-    await _ensureGoogleInitialized();
-    await GoogleSignIn.instance.signOut();
+    await _googleSignIn.signOut();
   }
 }
 
