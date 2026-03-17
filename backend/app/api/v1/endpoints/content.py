@@ -1,4 +1,5 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
@@ -37,24 +38,35 @@ def _get_or_seed_page(session: SessionDep, slug: str, title: str, content: str) 
     return page
 
 
-@router.get("/pages/terms-and-conditions", response_model=StaticPageOut)
+# ── Static Pages ─────────────────────────────────────────────────────
+
+
+@router.get("/pages", response_model=list[StaticPageOut])
+def list_pages(session: SessionDep) -> list[StaticPage]:
+    return session.exec(select(StaticPage).where(StaticPage.is_published == True)).all()  # noqa: E712
+
+
+@router.get("/pages/{slug}", response_model=StaticPageOut)
+def get_page(slug: str, session: SessionDep) -> StaticPage:
+    page = session.exec(select(StaticPage).where(StaticPage.slug == slug)).first()
+    if page is None:
+        # Auto-seed well-known pages on first access
+        if slug == "terms-and-conditions":
+            return _get_or_seed_page(session, slug, "Terms and Conditions", "")
+        if slug == "about-us":
+            return _get_or_seed_page(session, slug, "About Us", ABOUT_US_DEFAULT)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Page not found")
+    return page
+
+
+@router.get("/pages/terms-and-conditions", response_model=StaticPageOut, include_in_schema=False)
 def terms_page(session: SessionDep) -> StaticPage:
     return _get_or_seed_page(session, "terms-and-conditions", "Terms and Conditions", "")
 
 
-@router.get("/pages/about-us", response_model=StaticPageOut)
+@router.get("/pages/about-us", response_model=StaticPageOut, include_in_schema=False)
 def about_page(session: SessionDep) -> StaticPage:
     return _get_or_seed_page(session, "about-us", "About Us", ABOUT_US_DEFAULT)
-
-
-@router.get("/banners", response_model=list[BannerOut])
-def list_active_banners(session: SessionDep) -> list[Banner]:
-    statement = (
-        select(Banner)
-        .where(Banner.is_active == True)  # noqa: E712
-        .order_by(Banner.display_order, Banner.created_at.desc())
-    )
-    return session.exec(statement).all()
 
 
 @router.put("/admin/pages/{slug}", response_model=StaticPageOut)
@@ -78,6 +90,47 @@ def upsert_page(
     return page
 
 
+# ── Banners ─────────────────────────────────────────────────────────
+
+
+@router.get("/banners", response_model=list[BannerOut])
+def list_active_banners(session: SessionDep) -> list[Banner]:
+    statement = (
+        select(Banner)
+        .where(Banner.is_active == True)  # noqa: E712
+        .order_by(Banner.display_order, Banner.created_at.desc())
+    )
+    return session.exec(statement).all()
+
+
+@router.get("/banners/{banner_id}", response_model=BannerOut)
+def get_banner(banner_id: UUID, session: SessionDep) -> Banner:
+    """Get a single banner by UUID. Used for deep link resolution when the app
+    receives a ``/banner/{banner_id}`` link."""
+    banner = session.get(Banner, banner_id)
+    if banner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")
+    return banner
+
+
+@router.post("/banners/{banner_id}/share-link", response_model=dict)
+def generate_banner_share_link(banner_id: UUID, session: SessionDep) -> dict:
+    """Generate a shareable deep link for a banner.
+
+    The returned URL follows the pattern ``https://zests.app.link/banner/{id}``.
+    On mobile, app-links / universal-links intercept this and open the banner
+    inside the app.  If the app is not installed, the link falls through to the
+    web which should redirect to the appropriate app store."""
+    banner = session.get(Banner, banner_id)
+    if banner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")
+    share_link = banner.share_url or f"https://zests.app.link/banner/{banner_id}"
+    return {"banner_id": str(banner_id), "share_link": share_link}
+
+
+# ── Support ─────────────────────────────────────────────────────────
+
+
 @router.post("/support/issues", response_model=dict)
 def create_support_issue(
     payload: SupportIssueCreate,
@@ -92,4 +145,19 @@ def create_support_issue(
     session.add(issue)
     session.commit()
     return {"status": "ok", "issue_id": str(issue.id)}
+
+
+@router.get("/support/issues/{issue_id}", response_model=dict)
+def get_support_issue(issue_id: UUID, session: SessionDep) -> dict:
+    issue = session.get(SupportIssue, issue_id)
+    if issue is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    return {
+        "id": str(issue.id),
+        "user_id": str(issue.user_id) if issue.user_id else None,
+        "email": issue.email,
+        "message": issue.message,
+        "status": issue.status,
+        "created_at": issue.created_at.isoformat(),
+    }
 

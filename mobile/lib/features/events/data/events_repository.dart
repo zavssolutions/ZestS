@@ -1,4 +1,5 @@
 ﻿import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/api_client.dart";
@@ -16,6 +17,10 @@ class EventsRepository {
     final endpoint = token == null ? "/events/upcoming/anonymous" : "/events/upcoming";
     final response = await _dio.get<List<dynamic>>(endpoint);
     final data = response.data ?? [];
+    return compute(_parseEvents, data);
+  }
+
+  static List<EventModel> _parseEvents(List<dynamic> data) {
     return data
         .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
@@ -30,6 +35,10 @@ class EventsRepository {
   Future<List<RegistrationModel>> fetchMyRegistrations() async {
     final response = await _dio.get<List<dynamic>>("/events/registrations/me");
     final data = response.data ?? [];
+    return compute(_parseRegistrations, data);
+  }
+
+  static List<RegistrationModel> _parseRegistrations(List<dynamic> data) {
     return data
         .map((e) => RegistrationModel.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
@@ -38,6 +47,10 @@ class EventsRepository {
   Future<List<EventCategoryModel>> fetchEventCategories(String eventId) async {
     final response = await _dio.get<List<dynamic>>("/events/$eventId/categories");
     final data = response.data ?? [];
+    return compute(_parseCategories, data);
+  }
+
+  static List<EventCategoryModel> _parseCategories(List<dynamic> data) {
     return data
         .map((e) => EventCategoryModel.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
@@ -64,9 +77,7 @@ class EventsRepository {
       queryParameters: {"q": query},
     );
     final data = response.data ?? [];
-    return data
-        .map((e) => EventModel.fromJson(e as Map<String, dynamic>))
-        .toList(growable: false);
+    return compute(_parseEvents, data);
   }
 }
 

@@ -16,9 +16,26 @@ The project is structured as a monorepo with three core components:
 - **Role-Based Access**: Specialized profiles and views for Parents (with Kid sub-profiles), Skaters, Trainers, Organizers, and Admins.
 - **Event Management**: Complete CRUD, categorization (age groups, distances, skate types), event publish/cancel notifications via Firebase Cloud Messaging.
 - **Registrations & Results**: Frictionless registration flow for parents and direct participants, including post-event leaderboard results and points caching.
-- **Growth & Marketing**: Referral tracking for app installs and event views with point attribution.
-- **Content Management**: Global dynamic banners, sponsor listings, and static app pages.
+- **Unified Banner & Logo Strategy**: The ZestS Official Logo is now treated as a standard entry in the `banners` table. This simplifies the mobile frontend logic, as the ZestS logo is fetched, displayed, and shared using the same unified banner system as any other promotional content.
+- **Deep Link Sharing**: Native mobile integration utilizing `app_links` to handle external URLs. Banners and Events can be shared externally; the links will smartly redirect active users natively routing into the app or redirect to the App Store for users who don't have the app installed.
+- **Enhanced Banner Interaction**: Clicking a banner on the Home Screen opens a full-screen view. Tapping the full-screen banner triggers native sharing options, allowing users to share the banner image and its associated deep link.
 - **Security & Reliability**: Comprehensive role validation middleware, environment-variable configuration, and global API exception handling.
+
+## Infrastructure & Services
+
+### Backend Deployment (Render)
+The backend is a FastAPI application designed for high-performance and scalability. It is deployed on **Render** (using `infra/render.yaml`) within the `singapore` cluster to ensure low-latency access for users in Asia/India. The deployment includes:
+- **FastAPI**: The core web service handling API requests.
+- **PostgreSQL**: The primary relational database for persistent storage.
+- **Redis**: Powering session management, caching, and as a Celery broker.
+- **Celery Workers**: Handling asynchronous background tasks such as notification dispatching and search index synchronization.
+- **Meilisearch**: Providing ultra-fast, typo-tolerant event search capabilities.
+
+### Mobile Notifications (FCM)
+The application utilizes **Firebase Cloud Messaging (FCM)** for cross-platform push notifications.
+- **Service Side**: The FastAPI backend uses the `firebase-admin` SDK to securely send data and display notifications to specific device tokens.
+- **Client Side**: The Flutter app uses `firebase_messaging` to receive notifications, register device tokens, and handle background/foreground messaging logic.
+- **Features**: Automated notifications for event publishing, registration updates, and marketing announcements.
 
 ## Local Setup & Development
 
@@ -49,7 +66,7 @@ pip install -r requirements.txt
 alembic upgrade head
 ```
 
-To populate the database with comprehensive dummy data (parents, kids, trainers, events, banners):
+To populate the database with comprehensive dummy data (including the ZestS logo as a banner):
 ```bash
 python scripts/seed_dummy_data.py
 ```
@@ -95,6 +112,16 @@ cd mobile
 flutter analyze
 flutter test
 ```
+
+## Database Design
+
+The detailed database schema and design rationale can be found in [db_design.md](file:///c%3A/Users/Siva%20Kumar%20Perumalla/.gemini/antigravity/scratch/ZestS-repo/db_design.md). Key tables include:
+- **users**: Core user data and roles.
+- **events**: Sports event details.
+- **event_categories**: Registration categories (e.g., age groups).
+- **event_registrations**: User event sign-ups.
+- **banners**: Promotional content and logos.
+- **sponsors**: Event sponsor information.
 
 ## Production Deployment
 

@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/api_client.dart";
+import "../../events/data/events_repository.dart";
 
 // ── Providers ──────────────────────────────────────────────────────
 
@@ -192,6 +193,7 @@ class AdminEventsScreen extends ConsumerWidget {
                 trailing: PopupMenuButton<String>(
                   onSelected: (action) => _handleEventAction(context, ref, e, action),
                   itemBuilder: (_) => [
+                    const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
                     if (e["status"] == "draft")
                       const PopupMenuItem(value: "publish", child: Text("Publish")),
                     const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
@@ -223,6 +225,16 @@ class AdminEventsScreen extends ConsumerWidget {
         await dio.delete("/admin/events/${event["id"]}");
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event deleted")));
+      } else if (action == "manage_categories") {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AdminEventCategoriesScreen(
+              eventId: event["id"],
+              eventTitle: event["title"],
+            ),
+          ),
+        );
+        return;
       }
       ref.invalidate(adminEventsProvider);
     } catch (e) {
@@ -236,6 +248,9 @@ class AdminEventsScreen extends ConsumerWidget {
     final descCtrl = TextEditingController();
     final locationCtrl = TextEditingController();
     final cityCtrl = TextEditingController();
+    final bannerUrlCtrl = TextEditingController();
+    final latCtrl = TextEditingController();
+    final lngCtrl = TextEditingController();
 
     showDialog(
       context: context,
@@ -249,6 +264,9 @@ class AdminEventsScreen extends ConsumerWidget {
               TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 3),
               TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location name")),
               TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: "City")),
+              TextField(controller: bannerUrlCtrl, decoration: const InputDecoration(labelText: "Banner Image URL")),
+              TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Latitude"), keyboardType: TextInputType.number),
+              TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Longitude"), keyboardType: TextInputType.number),
             ],
           ),
         ),
@@ -263,6 +281,9 @@ class AdminEventsScreen extends ConsumerWidget {
                   "description": descCtrl.text,
                   "location_name": locationCtrl.text,
                   "venue_city": cityCtrl.text,
+                  "banner_image_url": bannerUrlCtrl.text.isEmpty ? null : bannerUrlCtrl.text,
+                  "latitude": double.tryParse(latCtrl.text),
+                  "longitude": double.tryParse(lngCtrl.text),
                   "start_at_utc": now.add(const Duration(days: 30)).toIso8601String(),
                   "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
                 });
@@ -275,6 +296,88 @@ class AdminEventsScreen extends ConsumerWidget {
               }
             },
             child: const Text("Save (Draft)"),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Admin Event Categories Screen ──────────────────────────────────
+
+class AdminEventCategoriesScreen extends ConsumerWidget {
+  const AdminEventCategoriesScreen({
+    required this.eventId,
+    required this.eventTitle,
+    super.key,
+  });
+
+  final String eventId;
+  final String eventTitle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categoriesAsync = ref.watch(eventCategoriesProvider(eventId));
+
+    return Scaffold(
+      appBar: AppBar(title: Text("Categories: $eventTitle")),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showAddCategoryDialog(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: categoriesAsync.when(
+        data: (categories) => ListView.builder(
+          itemCount: categories.length,
+          itemBuilder: (context, index) {
+            final c = categories[index];
+            return Card(
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              child: ListTile(
+                title: Text(c.name),
+                subtitle: Text("Price: ₹${c.price}"),
+              ),
+            );
+          },
+        ),
+        error: (e, _) => Center(child: Text("Error: $e")),
+        loading: () => const Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+
+  void _showAddCategoryDialog(BuildContext context, WidgetRef ref) {
+    final nameCtrl = TextEditingController();
+    final priceCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Add Category"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: "Category Name")),
+            TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Price"), keyboardType: TextInputType.number),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ref.read(dioProvider).post("/events/$eventId/categories", data: {
+                  "name": nameCtrl.text,
+                  "price": double.tryParse(priceCtrl.text) ?? 0,
+                });
+                ref.invalidate(eventCategoriesProvider(eventId));
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx);
+              } catch (e) {
+                if (!ctx.mounted) return;
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
+            },
+            child: const Text("Add"),
           ),
         ],
       ),

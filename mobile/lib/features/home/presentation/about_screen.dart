@@ -1,4 +1,4 @@
-﻿import "package:dio/dio.dart";
+import "package:dio/dio.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -16,7 +16,16 @@ class AboutScreen extends ConsumerWidget {
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             if (snapshot.hasError) {
-              return const Center(child: Text("Unable to load About Us"));
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    "Our About information is currently unavailable.\n"
+                    "Please check back in a little while.",
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
             }
             return const Center(child: CircularProgressIndicator());
           }

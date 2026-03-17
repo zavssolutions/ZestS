@@ -278,10 +278,12 @@ def seed() -> None:
 
         # ── Banners ─────────────────────────────────────────────
         s.add_all([
+            Banner(title="ZestS Official Logo", image_url="assets/images/zests_logo.png",
+                   link_url=None, share_url="https://zests.app.link/banner/zests_logo", placement="home_top", display_order=0),
             Banner(title="Hyderabad Open 2026", image_url="https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800",
-                   link_url=f"/events/{event1.id}", placement="home_top", display_order=0),
+                   link_url=f"/events/{event1.id}", placement="home_top", display_order=1),
             Banner(title="Speed Cup Bangalore", image_url="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=800",
-                   link_url=f"/events/{event2.id}", placement="home_top", display_order=1),
+                   link_url=f"/events/{event2.id}", placement="home_top", display_order=2),
         ])
 
         # ── Sponsors ────────────────────────────────────────────

@@ -87,7 +87,20 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             ],
           );
         },
-        error: (error, stackTrace) => const Center(child: Text("Unable to load event")),
+        error: (error, stackTrace) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                Text("This event is not available right now."),
+                SizedBox(height: 8),
+                Text("Please go back and try another event."),
+              ],
+            ),
+          ),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
@@ -148,14 +161,14 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         decoration: const InputDecoration(labelText: "Register for"),
                       );
                     },
-                    error: (error, stackTrace) => const Text("Unable to load kids"),
+                    error: (error, stackTrace) => const Text("Kid profiles are unavailable right now."),
                     loading: () => const Center(child: CircularProgressIndicator()),
                   );
                 }
                 _selectedUserId = null;
                 return const SizedBox.shrink();
               },
-              error: (error, stackTrace) => const Text("Unable to load profile"),
+              error: (error, stackTrace) => const Text("Profile information is unavailable right now."),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
             const SizedBox(height: 12),
@@ -186,7 +199,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           ],
         );
       },
-      error: (error, stackTrace) => const Text("Unable to load categories"),
+      error: (error, stackTrace) => const Text("Categories are not available right now."),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }

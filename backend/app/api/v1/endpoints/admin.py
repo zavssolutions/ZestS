@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import or_
 from sqlmodel import func, select
 
@@ -25,6 +25,7 @@ from app.schemas.content import (
 )
 from app.schemas.event import EventOut, EventResultCreate, EventResultOut, EventResultUpdate, EventUpdate
 from app.schemas.user import UserAdminOut, UserUpdate
+from app.services.storage import upload_bytes
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -264,6 +265,32 @@ def delete_banner(
     session.commit()
     _log_action(session, current_user.id, "delete_banner", "banners", banner_id)
     return {"status": "ok"}
+
+
+@router.post("/banners/{banner_id}/upload-image", response_model=BannerOut)
+def upload_banner_image(
+    banner_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    file: UploadFile = File(...),
+) -> Banner:
+    """Upload an image for an existing banner. The file is sent to GCP Storage
+    and the banner's ``image_url`` is updated with the public URL."""
+    banner = session.get(Banner, banner_id)
+    if banner is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Banner not found")
+
+    data = file.file.read()
+    object_name = f"banners/{banner_id}/{file.filename}"
+    url = upload_bytes(object_name, data, file.content_type or "image/png")
+    banner.image_url = url
+    if not banner.share_url:
+        banner.share_url = f"https://zests.app.link/banner/{banner_id}"
+    session.add(banner)
+    session.commit()
+    session.refresh(banner)
+    _log_action(session, current_user.id, "upload_banner_image", "banners", banner_id, {"filename": file.filename})
+    return banner
 
 
 @router.get("/sponsors", response_model=list[SponsorOut])

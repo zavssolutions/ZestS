@@ -1,4 +1,4 @@
-﻿import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/api_client.dart";
 import "profile_model.dart";
@@ -9,7 +9,8 @@ final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
 });
 
 final cachedProfileProvider = FutureProvider<ProfileModel?>((ref) async {
-  return ref.watch(profileRepositoryProvider).readCachedProfile();
+  final repo = ref.watch(profileRepositoryProvider);
+  return await repo.readCachedProfile();
 });
 
 final kidsProvider = FutureProvider<List<ProfileModel>>((ref) async {

@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -28,6 +28,7 @@ class Banner(SQLModel, table=True):
     title: Optional[str] = Field(default=None, max_length=200)
     image_url: str = Field(max_length=500)
     link_url: Optional[str] = Field(default=None, max_length=500)
+    share_url: Optional[str] = Field(default=None, max_length=500)
     placement: str = Field(default="home_top", max_length=50)
     display_order: int = Field(default=0)
     is_active: bool = Field(default=True)

@@ -41,6 +41,8 @@ class AuthController extends StateNotifier<AuthState> {
       final result = await _repo.signInWithGoogle();
       _ref.read(authTokenStoreProvider).token = result.token;
       await _ref.read(profileRepositoryProvider).fetchProfile();
+      _ref.invalidate(cachedProfileProvider);
+      _ref.invalidate(kidsProvider);
       await _ref.read(notificationServiceProvider).registerDeviceToken();
       if (result.isNewUser) {
         await PermissionService().requestOptionalPermissions();
@@ -86,6 +88,8 @@ class AuthController extends StateNotifier<AuthState> {
       );
       _ref.read(authTokenStoreProvider).token = result.token;
       await _ref.read(profileRepositoryProvider).fetchProfile();
+      _ref.invalidate(cachedProfileProvider);
+      _ref.invalidate(kidsProvider);
       await _ref.read(notificationServiceProvider).registerDeviceToken();
       if (result.isNewUser) {
         await PermissionService().requestOptionalPermissions();

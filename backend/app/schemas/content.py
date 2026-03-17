@@ -33,6 +33,7 @@ class BannerCreate(BaseModel):
     title: Optional[str] = None
     image_url: str
     link_url: Optional[str] = None
+    share_url: Optional[str] = None
     placement: str = "home_top"
     display_order: int = 0
     is_active: bool = True
@@ -42,6 +43,7 @@ class BannerUpdate(BaseModel):
     title: Optional[str] = None
     image_url: Optional[str] = None
     link_url: Optional[str] = None
+    share_url: Optional[str] = None
     placement: Optional[str] = None
     display_order: Optional[int] = None
     is_active: Optional[bool] = None
@@ -54,6 +56,7 @@ class BannerOut(BaseModel):
     title: Optional[str]
     image_url: str
     link_url: Optional[str]
+    share_url: Optional[str]
     placement: str
     display_order: int
     is_active: bool

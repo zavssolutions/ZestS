@@ -19,8 +19,6 @@ final remoteConfigProvider = FutureProvider<RemoteConfigService>((ref) async {
 });
 
 final startupDestinationProvider = FutureProvider<StartupDestination>((ref) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   final remoteConfig = await ref.watch(remoteConfigProvider.future);
   if (await remoteConfig.isForceUpdateRequired()) {
     return StartupDestination.forceUpdate;
