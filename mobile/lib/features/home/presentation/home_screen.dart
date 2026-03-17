@@ -26,6 +26,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final pointsAsync = ref.watch(userPointsProvider);
     final pages = <Widget>[
       const _DashboardPage(),
       const _SearchPage(),
@@ -34,7 +35,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text("ZestS Home")),
+      appBar: AppBar(
+        title: const Text("ZestS Home"),
+        actions: [
+          pointsAsync.when(
+            data: (points) => Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text(
+                  "$points",
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyan),
+                ),
+              ),
+            ),
+            error: (_, __) => const SizedBox.shrink(),
+            loading: () => const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+            ),
+          ),
+        ],
+      ),
       drawer: const _HomeDrawer(),
       body: pages[_tab],
       bottomNavigationBar: NavigationBar(
@@ -156,6 +177,8 @@ class _HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(upcomingEventsProvider);
     final bannersAsync = ref.watch(bannersProvider);
+    final profileAsync = ref.watch(cachedProfileProvider);
+    final isLoggedIn = profileAsync.valueOrNull != null;
 
     final bannerWidget = bannersAsync.when(
       data: (banners) {
@@ -232,6 +255,7 @@ class _HomePage extends ConsumerWidget {
 
     return eventsAsync.when(
       data: (events) {
+        final displayedEvents = isLoggedIn ? events : events.take(1).toList();
         return CustomScrollView(
           slivers: [
             SliverPadding(
@@ -246,7 +270,7 @@ class _HomePage extends ConsumerWidget {
                   const _SectionTitle("Leaderboard"),
                   const Card(child: ListTile(title: Text("Top skaters this week"))),
                   const SizedBox(height: 12),
-                  const _SectionTitle("Events"),
+                  _SectionTitle("Events (${events.length})"),
                 ]),
               ),
             ),
@@ -255,7 +279,7 @@ class _HomePage extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final e = events[index];
+                    final e = displayedEvents[index];
                     return Card(
                       child: ListTile(
                         leading: e.bannerImageUrl != null
@@ -269,7 +293,7 @@ class _HomePage extends ConsumerWidget {
                       ),
                     );
                   },
-                  childCount: events.length,
+                  childCount: displayedEvents.length,
                 ),
               ),
             ),
@@ -277,9 +301,6 @@ class _HomePage extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Streaks & Rewards"),
-                  const Card(child: ListTile(title: Text("Daily streak: 2 days"))),
                   const SizedBox(height: 12),
                   const _SectionTitle("Tip of the day"),
                   const Card(child: ListTile(title: Text("Stay hydrated before training."))),
@@ -311,9 +332,6 @@ class _HomePage extends ConsumerWidget {
                       subtitle: Text("Please try again in a little while."),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Streaks & Rewards"),
-                  const Card(child: ListTile(title: Text("Daily streak: 0 days"))),
                   const SizedBox(height: 12),
                   const _SectionTitle("Tip of the day"),
                   const Card(child: ListTile(title: Text("Stay hydrated before training."))),

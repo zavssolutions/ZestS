@@ -1,10 +1,11 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import select
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel import select, func
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
 from app.models.enums import Gender, UserRole
 from app.models.user import User
+from app.models.event import Referral
 from app.schemas.user import KidCreate, UserProfileOut, UserProfileUpsert
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -13,6 +14,14 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me", response_model=UserProfileOut)
 def get_me(current_user: CurrentUser) -> User:
     return current_user
+
+
+@router.get("/me/points", response_model=dict)
+def get_my_points(current_user: CurrentUser, session: SessionDep) -> dict:
+    total_points = session.exec(
+        select(func.sum(Referral.points)).where(Referral.referrer_user_id == current_user.id)
+    ).first()
+    return {"total_points": total_points or 0}
 
 
 @router.put("/me", response_model=UserProfileOut)

@@ -89,4 +89,14 @@ class ProfileRepository {
     final data = response.data ?? {};
     return ProfileModel.fromJson(data);
   }
+
+  Future<int> fetchUserPoints() async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>("/users/me/points");
+      final data = response.data ?? {};
+      return (data["total_points"] as int?) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }
