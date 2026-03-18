@@ -7,12 +7,21 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:278971942608:android:d620b69cb052ae2077c0d5",
+        "mobilesdk_app_id": "1:278971942608:android:64d99eeff28c0d4b77c0d5",
         "android_client_info": {
-          "package_name": "com.zests.zests_app"
+          "package_name": "com.zests.zestsmvp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "278971942608-tpuv8od5stt379qqjh5lvue4fmct69rs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zests.zestsmvp",
+            "certificate_hash": "3afd5907e9e229c8f5e17d03c3ae67ce46c85c78"
+          }
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDK_nXcB4y0sIohdJPxe_iq4-RPyky8740"

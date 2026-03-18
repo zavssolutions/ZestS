@@ -19,7 +19,6 @@ class AuthRepository {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: <String>[
       "email",
-      "https://www.googleapis.com/auth/userinfo.profile",
     ],
   );
 

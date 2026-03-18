@@ -1,4 +1,4 @@
-package com.zests.zests_app
+package com.zests.zestsmvp
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -8,10 +8,10 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCxmHEo-FUFvlNbNZmEEkyltw5cKxJ1yvY',
-    appId: '1:36898535072:android:80ea49322e21ae4fc5bbc5',
-    messagingSenderId: '36898535072',
-    projectId: 'zestsapp',
-    storageBucket: 'zestsapp.firebasestorage.app',
+    apiKey: 'AIzaSyDK_nXcB4y0sIohdJPxe_iq4-RPyky8740',
+    appId: '1:278971942608:android:d620b69cb052ae2077c0d5',
+    messagingSenderId: '278971942608',
+    projectId: 'test-49b1d',
+    storageBucket: 'test-49b1d.firebasestorage.app',
   );
 }
