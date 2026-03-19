@@ -125,6 +125,69 @@ The detailed database schema and design rationale can be found in [db_design.md]
 
 ## Production Deployment
 
+### Firebase & Google Sign‑In Setup
+
+Follow these steps to configure Firebase, Google OAuth, and the mobile app:
+
+- Create/Select a Firebase project and set a Support Email under Project Settings → General.
+- Enable the Google provider under Authentication → Sign‑in method.
+- Register the Android app with the exact package name: `com.zests.zestsmvp`.
+- Add the debug SHA‑1 fingerprint to the Android app settings:
+  - `3A:FD:59:07:E9:E2:29:C8:F5:E1:7D:03:C3:AE:67:CE:46:C8:5C:78`
+- Download `google-services.json` from Firebase and place it at:
+  - `mobile/android/app/google-services.json`
+- Verify the downloaded file contains:
+  - An Android OAuth entry (`client_type: 1`) matching `com.zests.zestsmvp`
+  - A Web client entry (`client_type: 3`) used for serverClientId flows
+- Regenerate `firebase_options.dart` if your Firebase project or app settings changed:
+  - `flutterfire configure` targeting the Android app above
+- Ensure the mobile app initializes Firebase safely in [main.dart](file:///c%3A/Users/Siva%20Kumar%20Perumalla/.gemini/antigravity/scratch/ZestS-repo/mobile/lib/main.dart) using:
+  - `WidgetsFlutterBinding.ensureInitialized()`
+  - Conditional `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)` when `Firebase.apps.isEmpty`
+
+Common causes of Google Sign‑In errors:
+- ApiException: 10 → Package name or SHA‑1 mismatch; fix app registration and re‑download `google-services.json`
+- ApiException: 12500 → Missing Support Email or Google provider disabled; set both in Firebase
+- Backend 401 on `/auth/token` → Backend missing Firebase Admin credentials; see “Render Backend Configuration”
+
+### Render Backend Configuration
+
+Provision infrastructure and deploy services with Render (or run [scripts/setup_render_independent.py](file:///c%3A/Users/Siva%20Kumar%20Perumalla/.gemini/antigravity/scratch/ZestS-repo/scripts/setup_render_independent.py) to automate):
+
+- Services:
+  - Web Service: `zestsmvp-backend` (FastAPI)
+  - Web Service: `zestsmvp-admin` (Next.js)
+  - PostgreSQL: `zestsmvp-db`
+  - Redis: `zestsmvp-cache`
+- Backend Start Command:
+  - `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Health Check Path:
+  - `/healthz`
+- Required backend environment variables (Render → Service → Environment):
+  - `DATABASE_URL` → SQLAlchemy URL (use `postgresql+psycopg://`)
+  - `REDIS_URL`
+  - `APP_ENV=production`
+  - `APP_NAME=ZestS MVP API`
+  - `API_V1_PREFIX=/api/v1`
+  - `ADMIN_EMAILS=zavssolutions@gmail.com,sivakumar.perumalla.lld01@gmail.com`
+  - `MEILISEARCH_URL` and `MEILISEARCH_MASTER_KEY` (if using search)
+  - `FIREBASE_PROJECT_ID=test-49b1d`
+  - `GOOGLE_AUTH_ENABLED=true`
+  - `PHONE_AUTH_ENABLED=true`
+  - `AUTH_ENABLED=true`
+  - `PYTHON_VERSION=3.12.4`
+  - `FIREBASE_SERVICE_ACCOUNT_JSON` → Paste the entire JSON from Firebase Console → Service Accounts → Generate new private key
+
+After setting `FIREBASE_SERVICE_ACCOUNT_JSON`, redeploy the backend so `/auth/token` can verify Firebase ID tokens via Admin SDK.
+
+### Mobile → Backend Connectivity
+
+- Mobile base URL is defined in [constants.dart](file:///c%3A/Users/Siva%20Kumar%20Perumalla/.gemini/antigravity/scratch/ZestS-repo/mobile/lib/core/constants.dart):
+  - `https://zestsmvp-backend.onrender.com/api/v1`
+- The mobile app exchanges the Firebase ID token with the backend:
+  - POST `/auth/token` with `{"id_token": "<firebase-id-token>"}` handled in [auth_repository.dart](file:///c%3A/Users/Siva%20Kumar%20Perumalla/.gemini/antigravity/scratch/ZestS-repo/mobile/lib/features/auth/data/auth_repository.dart#L99-L109)
+- On 401 responses, the app now resets local auth state to avoid partial login loops.
+
 ### Building Mobile Artifacts
 ```bash
 cd mobile

@@ -83,57 +83,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: !_acceptedTerms ? null : () => context.push("/phone-auth"),
                   child: const Text("Verify with Phone Number"),
                 ),
-              const SizedBox(height: 10),
-              OutlinedButton(
-                onPressed: !_acceptedTerms ? null : () => _showEmailLoginDialog(context),
-                child: const Text("Login with Email / Password"),
-              ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showEmailLoginDialog(BuildContext context) {
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Email Login"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: emailCtrl,
-              decoration: const InputDecoration(labelText: "Email"),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            TextField(
-              controller: passCtrl,
-              decoration: const InputDecoration(labelText: "Password"),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          FilledButton(
-            onPressed: () async {
-              final ok = await ref.read(authControllerProvider.notifier).signInWithEmail(
-                    emailCtrl.text.trim(),
-                    passCtrl.text.trim(),
-                  );
-              if (ok && context.mounted) {
-                Navigator.pop(ctx);
-                context.go("/");
-              }
-            },
-            child: const Text("Login"),
-          ),
-        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import "package:flutter/foundation.dart";
+import "package:dio/dio.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../../../core/notification_service.dart";
@@ -35,6 +36,23 @@ class AuthController extends StateNotifier<AuthState> {
   final Ref _ref;
   final AuthRepository _repo;
 
+  String _toUserMessage(Object error) {
+    if (error is AuthBackendException) {
+      if (error.statusCode == 401) {
+        return "Backend rejected the sign-in token (401). Set FIREBASE_SERVICE_ACCOUNT_JSON on the backend and redeploy.";
+      }
+      return error.message;
+    }
+    if (error is DioException) {
+      final code = error.response?.statusCode;
+      if (code == 401) {
+        return "Backend rejected the sign-in token (401). Set FIREBASE_SERVICE_ACCOUNT_JSON on the backend and redeploy.";
+      }
+      return error.message ?? error.toString();
+    }
+    return error.toString();
+  }
+
   Future<bool> signInWithGoogle() async {
     state = state.copyWith(loading: true, error: null);
     try {
@@ -56,7 +74,7 @@ class AuthController extends StateNotifier<AuthState> {
       }
       debugPrint("Google Sign-in Error: $e");
       debugPrintStack(stackTrace: st);
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _toUserMessage(e));
       return false;
     }
   }
@@ -76,7 +94,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(loading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _toUserMessage(e));
       return false;
     }
   }
@@ -90,7 +108,7 @@ class AuthController extends StateNotifier<AuthState> {
       );
       state = state.copyWith(loading: false);
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _toUserMessage(e));
     }
   }
 
@@ -121,7 +139,7 @@ class AuthController extends StateNotifier<AuthState> {
       state = state.copyWith(loading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(loading: false, error: _toUserMessage(e));
       return false;
     }
   }
@@ -130,6 +148,16 @@ class AuthController extends StateNotifier<AuthState> {
     await _repo.signOut();
     _ref.read(authTokenStoreProvider).token = null;
     await _ref.read(profileRepositoryProvider).clearCache();
+  }
+
+  Future<void> sendPasswordReset(String email) async {
+    state = state.copyWith(loading: true, error: null);
+    try {
+      await _repo.sendPasswordReset(email);
+      state = state.copyWith(loading: false, error: "Password reset email sent.");
+    } catch (e) {
+      state = state.copyWith(loading: false, error: _toUserMessage(e));
+    }
   }
 }
 

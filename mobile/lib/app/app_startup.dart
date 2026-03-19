@@ -36,7 +36,9 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
       // Fallback to cached profile if API is not reachable during startup.
       profile = await ref.read(profileRepositoryProvider).readCachedProfile();
     }
-    await ref.read(notificationServiceProvider).registerDeviceToken();
+    try {
+      await ref.read(notificationServiceProvider).registerDeviceToken();
+    } catch (_) {}
     if (profile == null || !profile.hasCompletedProfile) {
       return StartupDestination.profileCompletion;
     }
