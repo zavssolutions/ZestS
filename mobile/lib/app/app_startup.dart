@@ -1,16 +1,10 @@
-import "package:firebase_auth/firebase_auth.dart";
-import "package:firebase_core/firebase_core.dart";
-import "../firebase_options.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
-import "package:flutter/foundation.dart";
 
 import "../core/constants.dart";
 import "../core/remote_config_service.dart";
-import "../core/notification_service.dart";
 import "../core/storage.dart";
 import "../features/auth/data/auth_token_store.dart";
-import "../features/profile/data/profile_providers.dart";
-import "../features/profile/data/profile_model.dart";
+import "package:firebase_auth/firebase_auth.dart";
 
 enum StartupDestination { home, onboarding, login, forceUpdate, profileCompletion }
 
@@ -18,31 +12,24 @@ final remoteConfigProvider = FutureProvider<RemoteConfigService>((ref) async {
   return RemoteConfigService.create();
 });
 
+final firebaseIdTokenProvider = StreamProvider<String?>((ref) async* {
+  await for (final user in FirebaseAuth.instance.idTokenChanges()) {
+    if (user == null) {
+      yield null;
+      continue;
+    }
+    try {
+      yield await user.getIdToken(false);
+    } catch (_) {
+      yield null;
+    }
+  }
+});
+
 final startupDestinationProvider = FutureProvider<StartupDestination>((ref) async {
   final remoteConfig = await ref.watch(remoteConfigProvider.future);
   if (await remoteConfig.isForceUpdateRequired()) {
     return StartupDestination.forceUpdate;
-  }
-
-  final currentUser = FirebaseAuth.instance.currentUser;
-
-  if (currentUser != null) {
-    final idToken = await currentUser.getIdToken(true);
-    ref.read(authTokenStoreProvider).token = idToken;
-    ProfileModel? profile;
-    try {
-      profile = await ref.read(profileRepositoryProvider).fetchProfile();
-    } catch (_) {
-      // Fallback to cached profile if API is not reachable during startup.
-      profile = await ref.read(profileRepositoryProvider).readCachedProfile();
-    }
-    try {
-      await ref.read(notificationServiceProvider).registerDeviceToken();
-    } catch (_) {}
-    if (profile == null || !profile.hasCompletedProfile) {
-      return StartupDestination.profileCompletion;
-    }
-    return StartupDestination.home;
   }
 
   final prefs = await ref.watch(sharedPreferencesProvider.future);
@@ -56,5 +43,9 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
 
 final appStartupProvider = Provider<void>((ref) {
   ref.watch(startupDestinationProvider);
+  ref.listen(firebaseIdTokenProvider, (previous, next) {
+    final token = next.valueOrNull;
+    ref.read(authTokenStoreProvider).token = token;
+  });
 });
 

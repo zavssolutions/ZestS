@@ -2,6 +2,7 @@ import "package:cached_network_image/cached_network_image.dart";
 import "package:flutter/material.dart";
 import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:go_router/go_router.dart";
 import "package:url_launcher/url_launcher.dart";
 
 import "../data/event_model.dart";
@@ -172,29 +173,60 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
             const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () async {
-                if (_selectedCategoryId == null) return;
-                try {
-                  await ref.read(eventsRepositoryProvider).registerForEvent(
-                        eventId: widget.eventId,
-                        categoryId: _selectedCategoryId!,
-                        userId: _selectedUserId,
-                      );
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Registration submitted")),
-                    );
-                  }
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("Registration failed: $e")),
-                    );
-                  }
-                }
+            profileAsync.when(
+              data: (profile) {
+                final isLoggedIn = profile != null;
+                final needsProfileCompletion = profile != null && !profile.hasCompletedProfile;
+                final enabled = _selectedCategoryId != null && isLoggedIn && !needsProfileCompletion;
+                return FilledButton(
+                  onPressed: !enabled
+                      ? () {
+                          if (!isLoggedIn) {
+                            context.push("/login");
+                            return;
+                          }
+                          if (needsProfileCompletion) {
+                            context.push("/profile-complete");
+                            return;
+                          }
+                        }
+                      : () async {
+                          try {
+                            await ref.read(eventsRepositoryProvider).registerForEvent(
+                                  eventId: widget.eventId,
+                                  categoryId: _selectedCategoryId!,
+                                  userId: _selectedUserId,
+                                );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Registration submitted")),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Registration failed: $e")),
+                              );
+                            }
+                          }
+                        },
+                  child: Text(
+                    !isLoggedIn
+                        ? "Login to Register"
+                        : needsProfileCompletion
+                            ? "Complete Profile to Register"
+                            : "Register",
+                  ),
+                );
               },
-              child: const Text("Register"),
+              error: (error, stackTrace) => const FilledButton(
+                onPressed: null,
+                child: Text("Register"),
+              ),
+              loading: () => const FilledButton(
+                onPressed: null,
+                child: Text("Register"),
+              ),
             ),
           ],
         );

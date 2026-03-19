@@ -1,4 +1,4 @@
-﻿import "package:flutter/material.dart";
+import "package:flutter/material.dart";
 import "package:go_router/go_router.dart";
 
 import "../../../core/constants.dart";
@@ -29,7 +29,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (!mounted) {
       return;
     }
-    context.go("/login");
+    context.go("/home");
   }
 
   @override
