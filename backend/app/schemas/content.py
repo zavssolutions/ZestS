@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
@@ -85,3 +85,12 @@ class SponsorOut(BaseModel):
     logo_url: Optional[str]
     website_url: Optional[str]
     is_active: bool
+
+
+class TipOfDayOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    serial_no: int
+    date: date
+    content: str
+    is_url: bool

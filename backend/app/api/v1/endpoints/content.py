@@ -5,27 +5,23 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select
 
 from app.api.deps import OptionalCurrentUser, SessionDep, require_roles
-from app.models.content import Banner, StaticPage, SupportIssue
+from app.models.content import Banner, StaticPage, SupportIssue, TipOfDay
 from app.schemas.content import BannerOut
 from app.models.enums import UserRole
 from app.models.user import User
-from app.schemas.content import StaticPageOut, SupportIssueCreate
+from app.schemas.content import StaticPageOut, SupportIssueCreate, TipOfDayOut
 
 router = APIRouter(tags=["content"])
 
-ABOUT_US_DEFAULT = """Everyday, as our children spent three intense hours on the skating rink, we waited on the sidelines - watching, learning, and hoping we were making the right decisions for their future.
+ABOUT_US_DEFAULT = """Watching our children spend three intense hours on the rink every day, we realized that talent alone wasn't enough—success required information.
 
-But behind the excitement, there was constant uncertainty. Finding reliable information about upcoming events was a challenge. Details were scattered. Deadlines were missed. Planning became stressful instead of strategic. As parents who were new to the sports ecosystem, we often felt we were navigating in the dark.
+As parents new to the sports ecosystem, we were flying blind. Deadlines were missed, event details were scattered, and planning was stressful rather than strategic. We saw a gap: while the skaters had the grit, the community lacked the structure.
 
-Then came a turning point: after attending a major event, we realized something deeper - success in sports is not just about talent and hard work. It is also about awareness, timely information, and the right connections.
+We asked a simple question: What if we simplified the chaos?
 
-We were not organizers. We were not from a sports background. We were simply parents trying to do our best. So we asked ourselves:
-What if this confusion could be simplified?
-What if every skater and parent had access to structured, reliable, and timely information in one place?
+Though we weren't sports insiders or organizers, we were parents with a mission. What started as sideline conversations evolved into a tech-driven proof of concept designed to provide every skater with structured, timely, and reliable information.
 
-That question sparked a fire in us. What began as casual conversations during practice hours evolved into research, discussions, and eventually a proof of concept. We set out to build a tech-driven solution - not just to solve our problem, but to empower an entire skating community.
-
-This is how our journey began."""
+We built this to turn uncertainty into a strategy. This is our journey."""
 
 
 def _get_or_seed_page(session: SessionDep, slug: str, title: str, content: str) -> StaticPage:
@@ -88,6 +84,23 @@ def upsert_page(
     session.commit()
     session.refresh(page)
     return page
+
+
+# ── Tip Of The Day ───────────────────────────────────────────────────
+
+
+@router.get("/tip-of-the-day", response_model=TipOfDayOut)
+def get_tip_of_the_day(session: SessionDep) -> TipOfDay:
+    today = datetime.now(timezone.utc).date()
+    tip = session.exec(select(TipOfDay).where(TipOfDay.date == today)).first()
+    if tip is None:
+        tip = session.exec(select(TipOfDay).order_by(TipOfDay.date.desc())).first()
+    if tip is None:
+        tip = TipOfDay(date=today, content="Stay hydrated before training.", is_url=False)
+        session.add(tip)
+        session.commit()
+        session.refresh(tip)
+    return tip
 
 
 # ── Banners ─────────────────────────────────────────────────────────

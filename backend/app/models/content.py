@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, Date, DateTime, Integer
 from sqlmodel import Field, SQLModel
 
 
@@ -70,6 +70,24 @@ class SystemSetting(SQLModel, table=True):
     key: str = Field(primary_key=True, max_length=100)
     value: str = Field(default="")
     updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class TipOfDay(SQLModel, table=True):
+    __tablename__ = "tip_of_day"
+
+    serial_no: Optional[int] = Field(
+        default=None,
+        primary_key=True,
+        sa_column=Column(Integer, primary_key=True, autoincrement=True),
+    )
+    date: date = Field(sa_column=Column(Date, nullable=False, unique=True), index=True)
+    content: str = Field(max_length=500)
+    is_url: bool = Field(default=False)
+
+    created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )

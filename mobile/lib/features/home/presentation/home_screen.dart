@@ -4,15 +4,19 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:intl/intl.dart";
 import "package:skeletonizer/skeletonizer.dart";
+import "package:url_launcher/url_launcher.dart";
 
 import "../../../features/auth/application/auth_controller.dart";
 import "../../../features/events/data/event_model.dart";
 import "../../../features/events/data/events_repository.dart";
 import "../../../features/home/data/banner_model.dart";
 import "../../../features/home/data/banners_repository.dart";
+import "../../../features/home/data/tip_repository.dart";
 import "banner_view_screen.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
+
+enum _HomeTab { dashboard, search, schedule, home }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -22,17 +26,33 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _tab = 3;
+  _HomeTab _tab = _HomeTab.home;
 
   @override
   Widget build(BuildContext context) {
     final pointsAsync = ref.watch(userPointsProvider);
-    final pages = <Widget>[
-      const _DashboardPage(),
-      const _SearchPage(),
-      const _SchedulePage(),
-      const _HomePage(),
-    ];
+    final isLoggedIn = ref.watch(cachedProfileProvider).valueOrNull != null;
+    final tabs = isLoggedIn
+        ? const <_HomeTab>[_HomeTab.dashboard, _HomeTab.search, _HomeTab.schedule, _HomeTab.home]
+        : const <_HomeTab>[_HomeTab.search, _HomeTab.schedule, _HomeTab.home];
+    final selectedTab = tabs.contains(_tab) ? _tab : _HomeTab.home;
+    final selectedIndex = tabs.indexOf(selectedTab);
+
+    Widget body;
+    switch (selectedTab) {
+      case _HomeTab.dashboard:
+        body = const _DashboardPage();
+        break;
+      case _HomeTab.search:
+        body = const _SearchPage();
+        break;
+      case _HomeTab.schedule:
+        body = const _SchedulePage();
+        break;
+      case _HomeTab.home:
+        body = const _HomePage();
+        break;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -57,15 +77,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       drawer: const _HomeDrawer(),
-      body: pages[_tab],
+      body: body,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (value) => setState(() => _tab = value),
+        selectedIndex: selectedIndex,
+        onDestinationSelected: (value) => setState(() => _tab = tabs[value]),
         destinations: [
-          _animatedDestination(0, Icons.dashboard_outlined, "MyDashboard"),
-          _animatedDestination(1, Icons.search, "Search"),
-          _animatedDestination(2, Icons.calendar_month, "MySchedule"),
-          _animatedDestination(3, Icons.home_filled, "Home"),
+          if (isLoggedIn) _animatedDestination(0, Icons.dashboard_outlined, "MyDashboard"),
+          _animatedDestination(isLoggedIn ? 1 : 0, Icons.search, "Search"),
+          _animatedDestination(isLoggedIn ? 2 : 1, Icons.calendar_month, "MySchedule"),
+          _animatedDestination(isLoggedIn ? 3 : 2, Icons.home_filled, "Home"),
         ],
       ),
     );
@@ -153,7 +173,8 @@ class _HomeDrawer extends ConsumerWidget {
                   onTap: () async {
                     await ref.read(authControllerProvider.notifier).logout();
                     if (!context.mounted) return;
-                    context.go("/login");
+                    Navigator.pop(context);
+                    context.go("/home");
                   },
                 ),
               if (profile == null)
@@ -177,6 +198,7 @@ class _HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final eventsAsync = ref.watch(upcomingEventsProvider);
     final bannersAsync = ref.watch(bannersProvider);
+    final tipAsync = ref.watch(tipOfDayProvider);
     final profileAsync = ref.watch(cachedProfileProvider);
     final isLoggedIn = profileAsync.valueOrNull != null;
 
@@ -253,6 +275,29 @@ class _HomePage extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
     );
 
+    final tipWidget = tipAsync.when(
+      data: (tip) {
+        final content = tip.content.trim().isEmpty ? "Stay hydrated before training." : tip.content.trim();
+        if (!tip.isUrl) {
+          return Card(child: ListTile(title: Text(content)));
+        }
+        return Card(
+          child: ListTile(
+            title: Text(content),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () async {
+              final uri = Uri.tryParse(content);
+              if (uri != null) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+        );
+      },
+      error: (error, _) => const Card(child: ListTile(title: Text("Stay hydrated before training."))),
+      loading: () => const Card(child: ListTile(title: Text("Loading tip..."))),
+    );
+
     return eventsAsync.when(
       data: (events) {
         final displayedEvents = isLoggedIn ? events : events.take(1).toList();
@@ -264,12 +309,12 @@ class _HomePage extends ConsumerWidget {
                 delegate: SliverChildListDelegate([
                   bannerWidget,
                   const SizedBox(height: 12),
-                  const _SectionTitle("Common Dashboard"),
-                  const _QuickStats(),
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Leaderboard"),
-                  const Card(child: ListTile(title: Text("Top skaters this week"))),
-                  const SizedBox(height: 12),
+                  const _SectionTitle("Tip of the day"),
+                  tipWidget,
+                  const SizedBox(height: 16),
+                  const _SectionTitle("Dashboard"),
+                  const Card(child: ListTile(title: Text("Coming soon"))),
+                  const SizedBox(height: 16),
                   _SectionTitle("Events (${events.length})"),
                 ]),
               ),
@@ -302,8 +347,8 @@ class _HomePage extends ConsumerWidget {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const SizedBox(height: 12),
-                  const _SectionTitle("Tip of the day"),
-                  const Card(child: ListTile(title: Text("Stay hydrated before training."))),
+                  const _SectionTitle("Leaderboard"),
+                  const Card(child: ListTile(title: Text("Top skaters this week"))),
                 ]),
               ),
             ),
@@ -319,12 +364,12 @@ class _HomePage extends ConsumerWidget {
                 delegate: SliverChildListDelegate([
                   bannerWidget,
                   const SizedBox(height: 12),
-                  const _SectionTitle("Common Dashboard"),
-                  const _QuickStats(),
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Leaderboard"),
-                  const Card(child: ListTile(title: Text("Top skaters this week"))),
-                  const SizedBox(height: 12),
+                  const _SectionTitle("Tip of the day"),
+                  tipWidget,
+                  const SizedBox(height: 16),
+                  const _SectionTitle("Dashboard"),
+                  const Card(child: ListTile(title: Text("Coming soon"))),
+                  const SizedBox(height: 16),
                   const _SectionTitle("Events"),
                   const Card(
                     child: ListTile(
@@ -333,8 +378,8 @@ class _HomePage extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const _SectionTitle("Tip of the day"),
-                  const Card(child: ListTile(title: Text("Stay hydrated before training."))),
+                  const _SectionTitle("Leaderboard"),
+                  const Card(child: ListTile(title: Text("Top skaters this week"))),
                 ]),
               ),
             ),
@@ -357,119 +402,7 @@ class _DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profileAsync = ref.watch(cachedProfileProvider);
-    final kidsAsync = ref.watch(kidsProvider);
-
-    return profileAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Dashboard is temporarily unavailable."),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => ref.invalidate(cachedProfileProvider),
-                child: const Text("Retry"),
-              ),
-            ],
-          ),
-        ),
-      ),
-      data: (profile) {
-        if (profile == null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text("Login required for dashboard"),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => context.push("/login"),
-                  child: const Text("Login / Sign Up"),
-                ),
-              ],
-            ),
-          );
-        }
-        final isParent = profile.role == "parent";
-        if (!isParent) {
-          return const Center(child: Text("Dashboard is available for parent profiles."));
-        }
-        return CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const _SectionTitle("MyDashboard"),
-                  const SizedBox(height: 8),
-                  FilledButton.icon(
-                    onPressed: () => _showAddKidDialog(context, ref),
-                    icon: const Icon(Icons.person_add),
-                    label: const Text("Add Kid"),
-                  ),
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Kids"),
-                ]),
-              ),
-            ),
-            kidsAsync.when(
-              data: (kids) {
-                if (kids.isEmpty) {
-                  return const SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("No kids added yet."),
-                    ),
-                  );
-                }
-                return SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final kid = kids[index];
-                        return Card(
-                          child: ListTile(
-                            leading: const Icon(Icons.child_friendly),
-                            title: Text(kid.displayName),
-                            subtitle: Text("Role: ${kid.role}"),
-                          ),
-                        );
-                      },
-                      childCount: kids.length,
-                    ),
-                  ),
-                );
-              },
-              error: (error, stackTrace) => const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text("Kids list is unavailable right now."),
-                ),
-              ),
-              loading: () => const SliverToBoxAdapter(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 16),
-                  const _SectionTitle("Registered events"),
-                  const Card(child: ListTile(title: Text("No registrations yet"))),
-                ]),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    return const Center(child: Text("MyDashboard coming soon"));
   }
 }
 

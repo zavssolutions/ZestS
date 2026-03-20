@@ -148,6 +148,8 @@ class AuthController extends StateNotifier<AuthState> {
     await _repo.signOut();
     _ref.read(authTokenStoreProvider).token = null;
     await _ref.read(profileRepositoryProvider).clearCache();
+    _ref.invalidate(cachedProfileProvider);
+    _ref.invalidate(kidsProvider);
   }
 
   Future<void> sendPasswordReset(String email) async {
