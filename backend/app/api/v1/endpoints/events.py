@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -86,22 +86,23 @@ def update_event_status(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
-    event = session.get(Event, event_id)
+    event = session.exec(select(Event).where(Event.id == UUID(str(event_id)))).first()
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
 
-    event.status = EventStatus(payload.status)
+    new_status = payload.status.lower() if isinstance(payload.status, str) else payload.status.value
+    event.status = new_status
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
     session.commit()
     session.refresh(event)
 
-    if event.status in (EventStatus.PUBLISHED, EventStatus.CANCELED):
+    if new_status in ("published", "canceled"):
         settings = get_settings()
         if settings.celery_enabled:
-            broadcast_event_status_task.delay(str(event.id), event.status)
+            broadcast_event_status_task.delay(str(event.id), new_status)
         else:
-            send_event_status(session, str(event.id), event.status)
+            send_event_status(session, str(event.id), new_status)
 
     return event
 

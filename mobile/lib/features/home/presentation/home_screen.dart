@@ -16,6 +16,7 @@ import "../../../features/home/data/tip_repository.dart";
 import "banner_view_screen.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
+import "../../../features/admin/presentation/admin_screens.dart";
 
 enum _HomeTab { dashboard, search, schedule, home }
 
@@ -561,10 +562,34 @@ class _AdminDashboard extends StatelessWidget {
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
       children: [
-        _AdminCard(title: "Manage Events", icon: Icons.event, onTap: () {}),
-        _AdminCard(title: "Manage Users", icon: Icons.people, onTap: () {}),
-        _AdminCard(title: "Manage Results", icon: Icons.emoji_events, onTap: () {}),
-        _AdminCard(title: "Notifications", icon: Icons.notifications, onTap: () {}),
+        _AdminCard(
+          title: "Manage Events",
+          icon: Icons.event,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AdminEventsScreen()),
+          ),
+        ),
+        _AdminCard(
+          title: "Manage Users",
+          icon: Icons.people,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AdminUsersScreen()),
+          ),
+        ),
+        _AdminCard(
+          title: "Manage Results",
+          icon: Icons.emoji_events,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const AdminResultsScreen()),
+          ),
+        ),
+        _AdminCard(
+          title: "Notifications",
+          icon: Icons.notifications,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const _AdminNotificationsScreen()),
+          ),
+        ),
       ],
     );
   }
@@ -878,4 +903,18 @@ Future<void> _showAddKidDialog(BuildContext context, WidgetRef ref) async {
       );
     },
   );
+}
+
+class _AdminNotificationsScreen extends StatelessWidget {
+  const _AdminNotificationsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Notifications")),
+      body: const Center(
+        child: Text("Notification management coming soon."),
+      ),
+    );
+  }
 }

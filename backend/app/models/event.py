@@ -1,8 +1,8 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import EventStatus, RegistrationStatus
@@ -26,7 +26,7 @@ class Event(SQLModel, table=True):
     longitude: Optional[float] = Field(default=None)
 
     banner_image_url: Optional[str] = Field(default=None, max_length=500)
-    status: EventStatus = Field(default=EventStatus.DRAFT)
+    status: str = Field(default="draft", sa_column=Column(String(20), nullable=False, server_default="draft"))
 
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
@@ -69,7 +69,7 @@ class EventRegistration(SQLModel, table=True):
     user_id: UUID = Field(foreign_key="users.id")
 
     payment_id: Optional[UUID] = Field(default=None, foreign_key="payments.id")
-    status: RegistrationStatus = Field(default=RegistrationStatus.PENDING)
+    status: str = Field(default="pending", sa_column=Column(String(20), nullable=False, server_default="pending"))
     from_city: Optional[str] = Field(default=None, max_length=100)
 
     created_at: datetime = Field(

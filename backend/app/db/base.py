@@ -33,14 +33,21 @@ def _patch_schema(engine) -> None:
                 logger.info("Patched: added banners.share_url")
 
             # 2. Convert native PG enum columns to VARCHAR (one-time)
-            for col in ("role", "sport", "gender"):
-                dtype = _col_type("users", col)
+            enum_cols = [
+                ("users", "role"),
+                ("users", "sport"),
+                ("users", "gender"),
+                ("events", "status"),
+                ("event_registrations", "status"),
+            ]
+            for table, col in enum_cols:
+                dtype = _col_type(table, col)
                 if dtype and dtype.upper() == "USER-DEFINED":
                     conn.execute(text(
-                        f"ALTER TABLE users ALTER COLUMN {col} TYPE VARCHAR(20) USING {col}::text"
+                        f"ALTER TABLE {table} ALTER COLUMN {col} TYPE VARCHAR(20) USING {col}::text"
                     ))
                     conn.commit()
-                    logger.info(f"Patched: converted users.{col} from enum to varchar")
+                    logger.info(f"Patched: converted {table}.{col} from enum to varchar")
 
     except Exception as e:
         # SQLite or connection issues — silently skip
