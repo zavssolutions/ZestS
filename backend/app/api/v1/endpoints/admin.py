@@ -184,11 +184,52 @@ def delete_user(
     user = session.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    session.delete(user)
-    session.commit()
+        
+    try:
+        # Audit logs references - nullify user_id
+        logs = session.exec(select(AuditLog).where(AuditLog.user_id == user_id)).all()
+        for log in logs:
+            log.user_id = None
+            session.add(log)
+            
+        # Support Issues
+        issues = session.exec(select(SupportIssue).where(SupportIssue.user_id == user_id)).all()
+        for issue in issues:
+            issue.user_id = None
+            session.add(issue)
+            
+        # Event Registrations & Results
+        from app.models.event import EventRegistration, EventResult, Payment, Referral
+        
+        for model in [EventRegistration, EventResult, Payment]:
+            items = session.exec(select(model).where(model.user_id == user_id)).all()
+            for item in items:
+                session.delete(item)
+                
+        # Referrals
+        referrals = session.exec(select(Referral).where((Referral.referrer_user_id == user_id) | (Referral.referred_user_id == user_id))).all()
+        for ref in referrals:
+            session.delete(ref)
+            
+        # Kids
+        kids = session.exec(select(User).where(User.parent_id == user_id)).all()
+        for kid in kids:
+            kid.parent_id = None
+            session.add(kid)
+
+        session.delete(user)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Cannot delete user due to associated records: {e}"
+        )
+
     _log_action(session, current_user.id, "delete_user", "users", user_id)
     return {"status": "ok"}
 
+@router.get("/events", response_model=list[EventOut])
 def list_events(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
