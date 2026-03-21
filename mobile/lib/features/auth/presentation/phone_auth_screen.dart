@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 
 import "../../../shared/widgets/primary_button.dart";
+import "../../profile/data/profile_providers.dart";
 import "../application/auth_controller.dart";
 
 class PhoneAuthScreen extends ConsumerStatefulWidget {
@@ -66,7 +67,18 @@ class _PhoneAuthScreenState extends ConsumerState<PhoneAuthScreen> {
               onPressed: () async {
                 final ok = await ref.read(authControllerProvider.notifier).verifyOtp(_otpController.text.trim());
                 if (ok && context.mounted) {
-                    context.go("/home");
+                  try {
+                    final profile = await ref.read(profileRepositoryProvider).fetchProfile();
+                    if (context.mounted) {
+                      if (profile.hasCompletedProfile) {
+                        context.go("/home");
+                      } else {
+                        context.go("/profile-complete");
+                      }
+                    }
+                  } catch (_) {
+                    if (context.mounted) context.go("/profile-complete");
+                  }
                 }
               },
             ),

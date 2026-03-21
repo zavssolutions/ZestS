@@ -47,14 +47,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _save("pref_notifications", value);
             },
           ),
-          SwitchListTile(
-            title: const Text("Location"),
-            value: _location,
-            onChanged: (value) {
-              setState(() => _location = value);
-              _save("pref_location", value);
-            },
-          ),
         ],
       ),
     );

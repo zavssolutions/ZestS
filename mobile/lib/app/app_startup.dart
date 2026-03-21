@@ -4,6 +4,7 @@ import "../core/constants.dart";
 import "../core/remote_config_service.dart";
 import "../core/storage.dart";
 import "../features/auth/data/auth_token_store.dart";
+import "../features/profile/data/profile_providers.dart";
 import "package:firebase_auth/firebase_auth.dart";
 
 enum StartupDestination { home, onboarding, login, forceUpdate, profileCompletion }
@@ -38,6 +39,21 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
   if (isFirstOpen) {
     return StartupDestination.onboarding;
   }
+  
+  final user = FirebaseAuth.instance.currentUser;
+  if (user != null) {
+    try {
+      final profile = await ref.read(profileRepositoryProvider).fetchProfile();
+      if (profile.hasCompletedProfile) {
+        return StartupDestination.home;
+      } else {
+        return StartupDestination.profileCompletion;
+      }
+    } catch (_) {
+      return StartupDestination.profileCompletion;
+    }
+  }
+
   return StartupDestination.home;
 });
 

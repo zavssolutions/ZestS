@@ -29,15 +29,34 @@ class ProfileRepository {
     required String firstName,
     required String lastName,
     DateTime? dob,
+    String? role,
+    String? schoolName,
+    String? clubName,
+    String? specialization,
+    int? experienceYears,
+    String? orgName,
+    String? websiteUrl,
+    String? skillLevel,
+    int? yearsSkating,
+    String? preferredTracks,
   }) async {
     final payload = <String, dynamic>{
       "first_name": firstName,
       "last_name": lastName,
       "favorite_sport": "skating",
     };
-    if (dob != null) {
-      payload["dob"] = DateFormat("yyyy-MM-dd").format(dob);
-    }
+    if (dob != null) payload["dob"] = DateFormat("yyyy-MM-dd").format(dob);
+    if (role != null) payload["role"] = role;
+    if (schoolName != null) payload["school_name"] = schoolName;
+    if (clubName != null) payload["club_name"] = clubName;
+    if (specialization != null) payload["specialization"] = specialization;
+    if (experienceYears != null) payload["experience_years"] = experienceYears;
+    if (orgName != null) payload["org_name"] = orgName;
+    if (websiteUrl != null) payload["website_url"] = websiteUrl;
+    if (skillLevel != null) payload["skill_level"] = skillLevel;
+    if (yearsSkating != null) payload["years_skating"] = yearsSkating;
+    if (preferredTracks != null) payload["preferred_tracks"] = preferredTracks;
+
     final response = await _dio.put<Map<String, dynamic>>("/users/me", data: payload);
     final data = response.data ?? {};
     final profile = ProfileModel.fromJson(data);

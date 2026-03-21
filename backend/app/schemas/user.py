@@ -24,12 +24,28 @@ class UserProfileOut(BaseModel):
 
 
 class UserProfileUpsert(BaseModel):
+    role: Optional[UserRole] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     mobile_no: Optional[str] = None
     email: Optional[str] = None
     dob: Optional[date] = None
     favorite_sport: Sport = Sport.SKATING
+    
+    # Trainer
+    school_name: Optional[str] = None
+    club_name: Optional[str] = None
+    specialization: Optional[str] = None
+    experience_years: Optional[int] = None
+    
+    # Organizer
+    org_name: Optional[str] = None
+    website_url: Optional[str] = None
+    
+    # Skater
+    skill_level: Optional[str] = None
+    years_skating: Optional[int] = None
+    preferred_tracks: Optional[str] = None
 
 
 class KidCreate(BaseModel):

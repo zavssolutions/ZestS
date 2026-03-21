@@ -1,4 +1,5 @@
 from datetime import date, datetime, timezone
+import datetime as dt
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -80,10 +81,9 @@ class TipOfDay(SQLModel, table=True):
 
     serial_no: Optional[int] = Field(
         default=None,
-        primary_key=True,
         sa_column=Column(Integer, primary_key=True, autoincrement=True),
     )
-    date: date = Field(sa_column=Column(Date, nullable=False, unique=True), index=True)
+    date: dt.date = Field(sa_column=Column(Date, nullable=False, unique=True))
     content: str = Field(max_length=500)
     is_url: bool = Field(default=False)
 

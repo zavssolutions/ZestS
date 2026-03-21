@@ -1,4 +1,4 @@
-﻿from enum import StrEnum
+from enum import StrEnum
 
 
 class UserRole(StrEnum):
@@ -7,6 +7,8 @@ class UserRole(StrEnum):
     TRAINER = "trainer"
     ORGANIZER = "organizer"
     ADMIN = "admin"
+    SPONSOR = "sponsor"
+    SKATER = "skater"
 
 
 class Gender(StrEnum):

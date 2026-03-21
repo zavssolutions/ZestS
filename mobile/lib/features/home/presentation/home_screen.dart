@@ -2,6 +2,7 @@ import "package:cached_network_image/cached_network_image.dart";
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
+import "package:share_plus/share_plus.dart";
 import "package:intl/intl.dart";
 import "package:skeletonizer/skeletonizer.dart";
 import "package:url_launcher/url_launcher.dart";
@@ -230,23 +231,49 @@ class _HomePage extends ConsumerWidget {
               ),
             );
           },
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: isAsset
-                ? Image.asset(imageUrl, height: 130, width: double.infinity, fit: BoxFit.contain)
-                : CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    height: 130,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                    errorWidget: (context, url, error) => Image.asset(
-                      "assets/images/zests_logo.png",
-                      height: 130,
-                      width: double.infinity,
-                      fit: BoxFit.contain,
-                    ),
+          child: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: isAsset
+                    ? Image.asset(imageUrl, height: 130, width: double.infinity, fit: BoxFit.contain)
+                    : CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        height: 130,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                        errorWidget: (context, url, error) => Image.asset(
+                          "assets/images/zests_logo.png",
+                          height: 130,
+                          width: double.infinity,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  child: const Text("Compete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: IconButton.filledTonal(
+                  icon: const Icon(Icons.share, size: 20),
+                  onPressed: () {
+                    Share.share(shareText);
+                  },
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -262,14 +289,40 @@ class _HomePage extends ConsumerWidget {
             shareText: "Check out ZestS!",
           ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            "assets/images/zests_logo.png",
-            height: 130,
-            width: double.infinity,
-            fit: BoxFit.contain,
-          ),
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                "assets/images/zests_logo.png",
+                height: 130,
+                width: double.infinity,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text("Compete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            Positioned(
+              bottom: 8,
+              right: 8,
+              child: IconButton.filledTonal(
+                icon: const Icon(Icons.share, size: 20),
+                onPressed: () {
+                  Share.share("Check out ZestS!\nhttps://zests.app.link/home");
+                },
+              ),
+            ),
+          ],
         ),
       ),
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -402,7 +455,185 @@ class _DashboardPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const Center(child: Text("MyDashboard coming soon"));
+    final profile = ref.watch(cachedProfileProvider).valueOrNull;
+    if (profile == null) {
+      return const Center(child: Text("Login required to view dashboard"));
+    }
+
+    switch (profile.role) {
+      case "parent": return _ParentDashboard(profile: profile);
+      case "kid":
+      case "skater": return _SkaterDashboard();
+      case "admin": return _AdminDashboard();
+      case "organizer": return _OrganizerDashboard();
+      case "sponsor": return _SponsorDashboard();
+      default: return const Center(child: Text("MyDashboard coming soon"));
+    }
+  }
+}
+
+class _ParentDashboard extends ConsumerStatefulWidget {
+  final ProfileModel profile;
+  const _ParentDashboard({required this.profile});
+  @override
+  ConsumerState<_ParentDashboard> createState() => _ParentDashboardState();
+}
+
+class _ParentDashboardState extends ConsumerState<_ParentDashboard> {
+  ProfileModel? selectedKid;
+
+  @override
+  Widget build(BuildContext context) {
+    final kidsAsync = ref.watch(kidsProvider);
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("My Kids", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            TextButton.icon(
+              icon: const Icon(Icons.add),
+              label: const Text("Add Kid"),
+              onPressed: () => _showAddKidDialog(context, ref),
+            ),
+          ],
+        ),
+        kidsAsync.when(
+          data: (kids) {
+            if (kids.isEmpty) {
+              return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text("No kids added yet.")));
+            }
+            return DropdownButtonFormField<ProfileModel>(
+              decoration: const InputDecoration(labelText: "Select Kid"),
+              value: selectedKid ?? kids.first,
+              items: kids.map((appKid) {
+                return DropdownMenuItem(value: appKid, child: Text(appKid.displayName));
+              }).toList(),
+              onChanged: (val) => setState(() => selectedKid = val),
+            );
+          },
+          error: (e, st) => Text("Error loading kids: $e"),
+          loading: () => const Center(child: CircularProgressIndicator()),
+        ),
+        const SizedBox(height: 24),
+        if (selectedKid != null) ...[
+          Text("${selectedKid!.displayName}'s Events", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Card(child: ListTile(title: Text("No registered events."))),
+          const SizedBox(height: 16),
+          Text("${selectedKid!.displayName}'s Results", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Card(child: ListTile(title: Text("No past results."))),
+        ] else if (kidsAsync.valueOrNull?.isNotEmpty == true) ...[
+          Text("${kidsAsync.value!.first.displayName}'s Events", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Card(child: ListTile(title: Text("No registered events."))),
+          const SizedBox(height: 16),
+          Text("${kidsAsync.value!.first.displayName}'s Results", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Card(child: ListTile(title: Text("No past results."))),
+        ]
+      ],
+    );
+  }
+}
+
+class _SkaterDashboard extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: const [
+        Text("My Registered Events", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Card(child: ListTile(title: Text("No registered events."))),
+        SizedBox(height: 16),
+        Text("My Past Results", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Card(child: ListTile(title: Text("No results available."))),
+      ],
+    );
+  }
+}
+
+class _AdminDashboard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      padding: const EdgeInsets.all(16),
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      children: [
+        _AdminCard(title: "Manage Events", icon: Icons.event, onTap: () {}),
+        _AdminCard(title: "Manage Users", icon: Icons.people, onTap: () {}),
+        _AdminCard(title: "Manage Results", icon: Icons.emoji_events, onTap: () {}),
+        _AdminCard(title: "Notifications", icon: Icons.notifications, onTap: () {}),
+      ],
+    );
+  }
+}
+
+class _AdminCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _AdminCard({required this.title, required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 40, color: Colors.cyan),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrganizerDashboard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text("Organizer Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        const Card(child: ListTile(leading: Icon(Icons.event), title: Text("View Events"))),
+        const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.campaign),
+          label: const Text("Reach out for publishing / advertisement"),
+        ),
+      ],
+    );
+  }
+}
+
+class _SponsorDashboard extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        const Text("Sponsor Portal", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        const Card(child: ListTile(leading: Icon(Icons.event), title: Text("View Events"))),
+        const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () {},
+          icon: const Icon(Icons.handshake),
+          label: const Text("Reach out for publishing / advertisement"),
+        ),
+      ],
+    );
   }
 }
 

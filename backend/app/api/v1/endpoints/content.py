@@ -65,25 +65,7 @@ def about_page(session: SessionDep) -> StaticPage:
     return _get_or_seed_page(session, "about-us", "About Us", ABOUT_US_DEFAULT)
 
 
-@router.put("/admin/pages/{slug}", response_model=StaticPageOut)
-def upsert_page(
-    slug: str,
-    payload: StaticPageOut,
-    session: SessionDep,
-    _: User = Depends(require_roles(UserRole.ADMIN)),
-) -> StaticPage:
-    page = session.exec(select(StaticPage).where(StaticPage.slug == slug)).first()
-    if page is None:
-        page = StaticPage(slug=slug, title=payload.title, content=payload.content)
-    else:
-        page.title = payload.title
-        page.content = payload.content
-        page.updated_at = datetime.now(timezone.utc)
 
-    session.add(page)
-    session.commit()
-    session.refresh(page)
-    return page
 
 
 # ── Tip Of The Day ───────────────────────────────────────────────────

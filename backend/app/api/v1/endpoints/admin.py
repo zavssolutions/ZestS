@@ -9,7 +9,8 @@ from sqlmodel import func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.models.audit import AuditLog
-from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting
+from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting, StaticPage
+from pydantic import BaseModel
 from app.models.enums import UserRole
 from app.models.event import Event, EventRegistration, EventResult
 from app.models.user import User
@@ -160,7 +161,34 @@ def update_user(
     return user
 
 
-@router.get("/events", response_model=list[EventOut])
+@router.post("/users", response_model=UserAdminOut)
+def create_user(
+    payload: UserUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> User:
+    # Quick creation for admin
+    user = User(**payload.model_dump(exclude_unset=True))
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    _log_action(session, current_user.id, "create_user", "users", user.id, payload.model_dump())
+    return user
+
+@router.delete("/users/{user_id}", response_model=dict)
+def delete_user(
+    user_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    user = session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    session.delete(user)
+    session.commit()
+    _log_action(session, current_user.id, "delete_user", "users", user_id)
+    return {"status": "ok"}
+
 def list_events(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
@@ -368,6 +396,26 @@ def list_support_issues(
     return results
 
 
+class SupportIssueUpdate(BaseModel):
+    status: str
+
+@router.put("/support-issues/{issue_id}", response_model=SupportIssueOut)
+def update_support_issue(
+    issue_id: UUID,
+    payload: SupportIssueUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> SupportIssue:
+    issue = session.get(SupportIssue, issue_id)
+    if issue is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Issue not found")
+    issue.status = payload.status
+    session.add(issue)
+    session.commit()
+    session.refresh(issue)
+    _log_action(session, current_user.id, "update_support_issue", "support_issues", issue_id, payload.model_dump())
+    return issue
+
 @router.get("/event-results", response_model=list[EventResultOut])
 def list_event_results(
     session: SessionDep,
@@ -444,3 +492,24 @@ def list_logs(
     results = session.exec(statement).all()
     _log_action(session, current_user.id, "list_logs", "audit_logs", None, {"level": level, "limit": limit})
     return results
+class PageUpdate(BaseModel):
+    content: str
+
+@router.put("/pages/{slug}", response_model=dict)
+def update_page(
+    slug: str,
+    payload: PageUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    statement = select(StaticPage).where(StaticPage.slug == slug)
+    page = session.exec(statement).first()
+    if not page:
+        page = StaticPage(slug=slug, title=slug.replace("-", " ").title(), content=payload.content)
+    else:
+        page.content = payload.content
+        page.updated_at = datetime.now(timezone.utc)
+    session.add(page)
+    session.commit()
+    _log_action(session, current_user.id, "update_page", "static_pages", None, {"slug": slug})
+    return {"status": "ok", "slug": slug}
