@@ -162,7 +162,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             const SizedBox(height: 12),
             OutlinedButton(
               onPressed: _pickDob,
-              child: Text(_dob == null ? "Select DOB (optional)" : "DOB: ${_dob!.toLocal().toIso8601String().split("T")[0]}"),
+              child: Text(_dob == null ? "Select Date of Birth" : "DOB: ${_dob!.toLocal().toIso8601String().split("T")[0]}"),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(

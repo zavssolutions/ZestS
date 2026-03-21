@@ -15,6 +15,7 @@ def _patch_missing_columns(engine) -> None:
     logger = logging.getLogger(__name__)
     patches = [
         'ALTER TABLE banners ADD COLUMN IF NOT EXISTS share_url VARCHAR(500)',
+        "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'skater'",
     ]
     try:
         with engine.connect() as conn:
