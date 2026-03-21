@@ -1,4 +1,4 @@
-﻿from collections.abc import Callable
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -65,11 +65,8 @@ def get_current_user(
         session.add(user)
         session.commit()
         session.refresh(user)
-    elif _is_admin(user.email) and user.role != UserRole.ADMIN:
-        user.role = UserRole.ADMIN
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+    # Admin-email users only get auto-assigned admin on first creation (above).
+    # After that, the user-chosen role from profile completion is preserved.
 
     user.last_login_at = datetime.now(timezone.utc)
     session.add(user)
