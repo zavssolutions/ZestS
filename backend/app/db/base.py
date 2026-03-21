@@ -12,18 +12,34 @@ def _patch_missing_columns(engine) -> None:
     columns to tables that already exist. This helper bridges the gap for 
     deployments where Alembic migrations haven't run (or failed silently).
     """
+    import logging
+    logger = logging.getLogger(__name__)
     patches = [
         ("banners", "share_url", "VARCHAR(500)"),
     ]
-    with engine.connect() as conn:
-        inspector = inspect(engine)
-        for table, column, col_type in patches:
-            if table not in inspector.get_table_names():
-                continue
-            existing = [c["name"] for c in inspector.get_columns(table)]
-            if column not in existing:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
-                conn.commit()
+    try:
+        with engine.connect() as conn:
+            # Check existing columns via raw SQL (more reliable than inspect)
+            for table, column, col_type in patches:
+                try:
+                    result = conn.execute(text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = :tbl AND column_name = :col"
+                    ), {"tbl": table, "col": column})
+                    if result.fetchone() is None:
+                        conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {col_type}'))
+                        conn.commit()
+                        logger.info(f"Patched: added {column} to {table}")
+                    else:
+                        logger.info(f"Column {table}.{column} already exists")
+                except Exception as col_err:
+                    logger.error(f"Failed to patch {table}.{column}: {col_err}")
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+    except Exception as e:
+        logger.error(f"_patch_missing_columns error: {e}")
 
 
 def create_db_and_tables(engine) -> None:

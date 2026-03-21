@@ -50,6 +50,35 @@ def _log_action(
     session.commit()
 
 
+@router.post("/run-migrations", response_model=dict)
+def run_migrations(
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    """Manually apply missing schema changes to the database."""
+    from sqlalchemy import text
+    results = []
+    patches = [
+        ("banners", "share_url", "VARCHAR(500)"),
+    ]
+    for table, column, col_type in patches:
+        try:
+            row = session.exec(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = :tbl AND column_name = :col"
+            ), params={"tbl": table, "col": column}).first()
+            if row is None:
+                session.exec(text(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {col_type}'), params={})
+                session.commit()
+                results.append(f"Added {table}.{column}")
+            else:
+                results.append(f"{table}.{column} already exists")
+        except Exception as e:
+            results.append(f"Error patching {table}.{column}: {e}")
+    _log_action(session, current_user.id, "run_migrations", "system", None, {"results": results})
+    return {"status": "ok", "results": results}
+
+
 @router.get("/stats")
 def dashboard_stats(
     session: SessionDep,
