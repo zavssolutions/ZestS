@@ -3,7 +3,7 @@ from sqlmodel import select, func
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
-from app.models.enums import Gender, UserRole
+from app.models.enums import UserRole
 from app.models.user import User
 from app.models.event import Referral
 from app.schemas.user import KidCreate, UserProfileOut, UserProfileUpsert
@@ -28,10 +28,17 @@ def get_my_points(current_user: CurrentUser, session: SessionDep) -> dict:
 def update_me(payload: UserProfileUpsert, current_user: CurrentUser, session: SessionDep) -> User:
     for key, value in payload.model_dump(exclude_unset=True).items():
         if hasattr(current_user, key):
+            # Ensure enum values are stored as lowercase strings
+            if key in ('role', 'sport', 'gender') and isinstance(value, str):
+                value = value.lower()
             setattr(current_user, key, value)
 
-    role = payload.role if payload.role else current_user.role
-    if role == UserRole.TRAINER:
+    role = (payload.role.value if payload.role else current_user.role) or "parent"
+    if isinstance(role, UserRole):
+        role = role.value
+    role = str(role).lower()
+
+    if role == "trainer":
         from app.models.user import TrainerProfile
         profile = session.get(TrainerProfile, current_user.id)
         if not profile: profile = TrainerProfile(user_id=current_user.id)
@@ -40,7 +47,7 @@ def update_me(payload: UserProfileUpsert, current_user: CurrentUser, session: Se
         if payload.specialization is not None: profile.specialization = payload.specialization
         if payload.experience_years is not None: profile.experience_years = payload.experience_years
         session.add(profile)
-    elif role == UserRole.ORGANIZER:
+    elif role == "organizer":
         from app.models.user import OrganizerProfile
         profile = session.get(OrganizerProfile, current_user.id)
         if not profile:
@@ -49,7 +56,7 @@ def update_me(payload: UserProfileUpsert, current_user: CurrentUser, session: Se
             if payload.org_name is not None: profile.org_name = payload.org_name
         if payload.website_url is not None: profile.website_url = payload.website_url
         session.add(profile)
-    elif role == UserRole.SKATER:
+    elif role == "skater":
         from app.models.user import SkaterProfile
         profile = session.get(SkaterProfile, current_user.id)
         if not profile: profile = SkaterProfile(user_id=current_user.id)
@@ -79,11 +86,11 @@ def add_kid(
 
     kid = User(
         parent_id=current_user.id,
-        role=UserRole.KID,
+        role="kid",
         first_name=payload.first_name,
         last_name=payload.last_name,
         dob=payload.dob,
-        gender=Gender(payload.gender.lower()),
+        gender=payload.gender.lower(),
     )
     session.add(kid)
     session.commit()
@@ -97,4 +104,3 @@ def list_kids(
     current_user: User = Depends(require_roles(UserRole.PARENT)),
 ) -> list[User]:
     return session.exec(select(User).where(User.parent_id == current_user.id)).all()
-

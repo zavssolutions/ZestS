@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -21,9 +21,9 @@ class User(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     parent_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
 
-    role: UserRole = Field(default=UserRole.PARENT)
-    sport: Sport = Field(default=Sport.SKATING)
-    gender: Gender = Field(default=Gender.UNSPECIFIED)
+    role: str = Field(default="parent", sa_column=Column(String(20), nullable=False, server_default="parent"))
+    sport: str = Field(default="skating", sa_column=Column(String(20), nullable=False, server_default="skating"))
+    gender: str = Field(default="unspecified", sa_column=Column(String(20), nullable=False, server_default="unspecified"))
 
     firebase_uid: Optional[str] = Field(default=None, max_length=128)
     google_uid: Optional[str] = Field(default=None, max_length=128)

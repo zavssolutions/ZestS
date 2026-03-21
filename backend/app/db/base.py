@@ -15,7 +15,10 @@ def _patch_missing_columns(engine) -> None:
     logger = logging.getLogger(__name__)
     patches = [
         'ALTER TABLE banners ADD COLUMN IF NOT EXISTS share_url VARCHAR(500)',
-        "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'skater'",
+        # Convert native PG enum columns to VARCHAR to avoid name/value mismatch
+        "ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(20) USING role::text",
+        "ALTER TABLE users ALTER COLUMN sport TYPE VARCHAR(20) USING sport::text",
+        "ALTER TABLE users ALTER COLUMN gender TYPE VARCHAR(20) USING gender::text",
     ]
     try:
         with engine.connect() as conn:
