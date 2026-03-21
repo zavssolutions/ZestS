@@ -1,5 +1,7 @@
 import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:image_picker/image_picker.dart";
+import "package:dio/dio.dart";
 
 import "../../../core/api_client.dart";
 import "../../events/data/events_repository.dart";
@@ -248,56 +250,96 @@ class AdminEventsScreen extends ConsumerWidget {
     final descCtrl = TextEditingController();
     final locationCtrl = TextEditingController();
     final cityCtrl = TextEditingController();
-    final bannerUrlCtrl = TextEditingController();
     final latCtrl = TextEditingController();
     final lngCtrl = TextEditingController();
+    String? bannerUrl;
+    bool uploading = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Create Event"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Title")),
-              TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 3),
-              TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location name")),
-              TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: "City")),
-              TextField(controller: bannerUrlCtrl, decoration: const InputDecoration(labelText: "Banner Image URL")),
-              TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Latitude"), keyboardType: TextInputType.number),
-              TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Longitude"), keyboardType: TextInputType.number),
-            ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("Create Event"),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Title")),
+                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 3),
+                TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location name")),
+                TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: "City")),
+                const SizedBox(height: 12),
+                // ── Banner Image Picker ──
+                if (bannerUrl != null) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(bannerUrl!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                OutlinedButton.icon(
+                  onPressed: uploading
+                      ? null
+                      : () async {
+                          final picker = ImagePicker();
+                          final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                          if (image == null) return;
+                          setDialogState(() => uploading = true);
+                          try {
+                            final formData = FormData.fromMap({
+                              "file": await MultipartFile.fromFile(image.path, filename: image.name),
+                            });
+                            final resp = await ref.read(dioProvider).post("/uploads/image", data: formData);
+                            setDialogState(() {
+                              bannerUrl = resp.data["url"];
+                              uploading = false;
+                            });
+                          } catch (e) {
+                            setDialogState(() => uploading = false);
+                            if (!ctx.mounted) return;
+                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+                          }
+                        },
+                  icon: uploading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.image),
+                  label: Text(uploading ? "Uploading..." : (bannerUrl != null ? "Change Image" : "Pick Banner Image")),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Latitude"), keyboardType: TextInputType.number),
+                TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Longitude"), keyboardType: TextInputType.number),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            FilledButton(
+              onPressed: () async {
+                final now = DateTime.now().toUtc();
+                try {
+                  await ref.read(dioProvider).post("/events", data: {
+                    "title": titleCtrl.text,
+                    "description": descCtrl.text,
+                    "location_name": locationCtrl.text,
+                    "venue_city": cityCtrl.text,
+                    "banner_image_url": bannerUrl,
+                    "latitude": double.tryParse(latCtrl.text),
+                    "longitude": double.tryParse(lngCtrl.text),
+                    "start_at_utc": now.add(const Duration(days: 30)).toIso8601String(),
+                    "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
+                  });
+                  ref.invalidate(adminEventsProvider);
+                  if (!ctx.mounted) return;
+                  Navigator.pop(ctx);
+                } catch (e) {
+                  if (!ctx.mounted) return;
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              },
+              child: const Text("Save (Draft)"),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          FilledButton(
-            onPressed: () async {
-              final now = DateTime.now().toUtc();
-              try {
-                await ref.read(dioProvider).post("/events", data: {
-                  "title": titleCtrl.text,
-                  "description": descCtrl.text,
-                  "location_name": locationCtrl.text,
-                  "venue_city": cityCtrl.text,
-                  "banner_image_url": bannerUrlCtrl.text.isEmpty ? null : bannerUrlCtrl.text,
-                  "latitude": double.tryParse(latCtrl.text),
-                  "longitude": double.tryParse(lngCtrl.text),
-                  "start_at_utc": now.add(const Duration(days: 30)).toIso8601String(),
-                  "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
-                });
-                ref.invalidate(adminEventsProvider);
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx);
-              } catch (e) {
-                if (!ctx.mounted) return;
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
-              }
-            },
-            child: const Text("Save (Draft)"),
-          ),
-        ],
       ),
     );
   }
