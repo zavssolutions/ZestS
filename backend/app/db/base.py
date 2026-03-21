@@ -5,39 +5,49 @@ from sqlalchemy import text
 from app import models  # noqa: F401
 
 
-def _patch_missing_columns(engine) -> None:
-    """Add columns that may be missing from existing tables.
-    
-    Uses PostgreSQL's ADD COLUMN IF NOT EXISTS to safely patch columns.
-    On SQLite (tests), this is silently skipped.
+def _patch_schema(engine) -> None:
+    """One-time schema patches for production PostgreSQL.
+
+    Each patch checks whether it's needed before executing,
+    so this is a no-op on subsequent boots.
+    On SQLite (tests) all checks fail gracefully.
     """
     import logging
     logger = logging.getLogger(__name__)
-    patches = [
-        'ALTER TABLE banners ADD COLUMN IF NOT EXISTS share_url VARCHAR(500)',
-        # Convert native PG enum columns to VARCHAR to avoid name/value mismatch
-        "ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(20) USING role::text",
-        "ALTER TABLE users ALTER COLUMN sport TYPE VARCHAR(20) USING sport::text",
-        "ALTER TABLE users ALTER COLUMN gender TYPE VARCHAR(20) USING gender::text",
-    ]
+
     try:
         with engine.connect() as conn:
-            for sql in patches:
-                try:
-                    conn.execute(text(sql))
+
+            def _col_type(table: str, column: str) -> str | None:
+                """Return the data_type of a column, or None."""
+                row = conn.execute(text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name = :tbl AND column_name = :col"
+                ), {"tbl": table, "col": column}).fetchone()
+                return row[0] if row else None
+
+            # 1. banners.share_url — add if missing
+            if _col_type("banners", "share_url") is None:
+                conn.execute(text("ALTER TABLE banners ADD COLUMN share_url VARCHAR(500)"))
+                conn.commit()
+                logger.info("Patched: added banners.share_url")
+
+            # 2. Convert native PG enum columns to VARCHAR (one-time)
+            for col in ("role", "sport", "gender"):
+                dtype = _col_type("users", col)
+                if dtype and dtype.upper() == "USER-DEFINED":
+                    conn.execute(text(
+                        f"ALTER TABLE users ALTER COLUMN {col} TYPE VARCHAR(20) USING {col}::text"
+                    ))
                     conn.commit()
-                    logger.info(f"Schema patch OK: {sql}")
-                except Exception as e:
-                    # SQLite doesn't support IF NOT EXISTS for ADD COLUMN
-                    logger.warning(f"Schema patch skipped: {e}")
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        pass
+                    logger.info(f"Patched: converted users.{col} from enum to varchar")
+
     except Exception as e:
-        logger.error(f"_patch_missing_columns connection error: {e}")
+        # SQLite or connection issues — silently skip
+        import logging as _l
+        _l.getLogger(__name__).debug(f"Schema patch skipped (non-PG): {e}")
 
 
 def create_db_and_tables(engine) -> None:
     SQLModel.metadata.create_all(engine)
-    _patch_missing_columns(engine)
+    _patch_schema(engine)
