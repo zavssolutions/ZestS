@@ -181,49 +181,47 @@ def delete_user(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> dict:
+    from sqlalchemy import text
     user = session.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        
-    try:
-        # Audit logs references - nullify user_id
-        logs = session.exec(select(AuditLog).where(AuditLog.user_id == user_id)).all()
-        for log in logs:
-            log.user_id = None
-            session.add(log)
-            
-        # Support Issues
-        issues = session.exec(select(SupportIssue).where(SupportIssue.user_id == user_id)).all()
-        for issue in issues:
-            issue.user_id = None
-            session.add(issue)
-            
-        # Event Registrations & Results
-        from app.models.event import EventRegistration, EventResult, Payment, Referral
-        
-        for model in [EventRegistration, EventResult, Payment]:
-            items = session.exec(select(model).where(model.user_id == user_id)).all()
-            for item in items:
-                session.delete(item)
-                
-        # Referrals
-        referrals = session.exec(select(Referral).where((Referral.referrer_user_id == user_id) | (Referral.referred_user_id == user_id))).all()
-        for ref in referrals:
-            session.delete(ref)
-            
-        # Kids
-        kids = session.exec(select(User).where(User.parent_id == user_id)).all()
-        for kid in kids:
-            kid.parent_id = None
-            session.add(kid)
 
-        session.delete(user)
+    uid = str(user_id)
+    try:
+        # Use raw SQL to clean ALL FK references reliably
+        # 1. Nullify audit_logs.user_id
+        session.exec(text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :uid"), params={"uid": uid})
+        # 2. Nullify support_issues.user_id
+        session.exec(text("UPDATE support_issues SET user_id = NULL WHERE user_id = :uid"), params={"uid": uid})
+        # 3. Delete device_tokens
+        session.exec(text("DELETE FROM device_tokens WHERE user_id = :uid"), params={"uid": uid})
+        # 4. Delete notifications
+        session.exec(text("DELETE FROM notifications WHERE user_id = :uid"), params={"uid": uid})
+        # 5. Delete event_registrations
+        session.exec(text("DELETE FROM event_registrations WHERE user_id = :uid"), params={"uid": uid})
+        # 6. Delete event_results
+        session.exec(text("DELETE FROM event_results WHERE user_id = :uid"), params={"uid": uid})
+        # 7. Delete payments
+        session.exec(text("DELETE FROM payments WHERE user_id = :uid"), params={"uid": uid})
+        # 8. Delete referrals (both directions)
+        session.exec(text("DELETE FROM referrals WHERE referrer_user_id = :uid OR referred_user_id = :uid"), params={"uid": uid})
+        # 9. Nullify organizer_user_id on events organized by this user
+        session.exec(text("UPDATE events SET organizer_user_id = :admin_uid WHERE organizer_user_id = :uid"), params={"uid": uid, "admin_uid": str(current_user.id)})
+        # 10. Detach children (kid users)
+        session.exec(text("UPDATE users SET parent_id = NULL WHERE parent_id = :uid"), params={"uid": uid})
+        # 11. Delete role-specific profiles (CASCADE should handle, but be explicit)
+        for tbl in ["parent_profiles", "trainer_profiles", "organizer_profiles", "skater_profiles"]:
+            session.exec(text(f"DELETE FROM {tbl} WHERE user_id = :uid"), params={"uid": uid})
+        # 12. Finally delete the user
+        session.exec(text("DELETE FROM users WHERE id = :uid"), params={"uid": uid})
         session.commit()
     except Exception as e:
         session.rollback()
+        import traceback
+        detail = traceback.format_exc()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"Cannot delete user due to associated records: {e}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Cannot delete user: {e}\n{detail}"
         )
 
     _log_action(session, current_user.id, "delete_user", "users", user_id)
