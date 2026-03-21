@@ -46,29 +46,3 @@ def healthz() -> dict:
 
 
 app.include_router(api_router, prefix=settings.api_v1_prefix)
-
-
-@app.post("/apply-schema-fix", tags=["system"])
-def apply_schema_fix() -> dict:
-    """Temporary public endpoint to patch missing columns in production DB."""
-    from sqlalchemy import text
-    results = []
-    patches = [
-        ("banners", "share_url", "VARCHAR(500)"),
-    ]
-    with engine.connect() as conn:
-        for table, column, col_type in patches:
-            try:
-                row = conn.execute(text(
-                    "SELECT column_name FROM information_schema.columns "
-                    "WHERE table_name = :tbl AND column_name = :col"
-                ), {"tbl": table, "col": column}).fetchone()
-                if row is None:
-                    conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{column}" {col_type}'))
-                    conn.commit()
-                    results.append(f"ADDED {table}.{column}")
-                else:
-                    results.append(f"EXISTS {table}.{column}")
-            except Exception as e:
-                results.append(f"ERROR {table}.{column}: {e}")
-    return {"status": "ok", "results": results}
