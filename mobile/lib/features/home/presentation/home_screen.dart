@@ -632,7 +632,7 @@ class _OrganizerDashboard extends StatelessWidget {
         const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: () {},
+          onPressed: () => context.push("/support", extra: "I am interested in publishing/advertisement for my events."),
           icon: const Icon(Icons.campaign),
           label: const Text("Reach out for publishing / advertisement"),
         ),
@@ -653,7 +653,7 @@ class _SponsorDashboard extends StatelessWidget {
         const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: () {},
+          onPressed: () => context.push("/support", extra: "I am interested in sponsorship/advertisement opportunities."),
           icon: const Icon(Icons.handshake),
           label: const Text("Reach out for publishing / advertisement"),
         ),
@@ -745,11 +745,21 @@ class _SearchPageState extends ConsumerState<_SearchPage> {
       child: Column(
         children: [
           TextField(
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: "Search events",
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.arrow_forward),
+                onPressed: () {
+                  // Trigger search if not real-time, but here it's already real-time.
+                  // This provides a "button" feel as requested.
+                  FocusScope.of(context).unfocus();
+                },
+              ),
             ),
+            textInputAction: TextInputAction.search,
             onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
+            onSubmitted: (value) => ref.read(searchQueryProvider.notifier).state = value,
           ),
           const SizedBox(height: 12),
           Expanded(

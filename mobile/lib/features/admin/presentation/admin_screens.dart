@@ -2,6 +2,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:image_picker/image_picker.dart";
 import "package:dio/dio.dart";
+import "package:go_router/go_router.dart";
 
 import "../../../core/api_client.dart";
 import "../../events/data/events_repository.dart";
@@ -101,6 +102,25 @@ class AdminDashboardScreen extends ConsumerWidget {
           _navTile(context, Icons.support_agent, "User Issues", "/admin/issues"),
           _navTile(context, Icons.receipt_long, "Logs", "/admin/logs"),
           _navTile(context, Icons.article, "Misc (Pages)", "/admin/misc"),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () async {
+              try {
+                final resp = await ref.read(dioProvider).post("/notifications/test");
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Test sent to ${resp.data["devices_notified"]} devices")),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              }
+            },
+            icon: const Icon(Icons.notification_add),
+            label: const Text("Send Test Notification to All"),
+          ),
         ],
       ),
     );
@@ -182,32 +202,35 @@ class AdminEventsScreen extends ConsumerWidget {
         onPressed: () => _showCreateEventDialog(context, ref),
         child: const Icon(Icons.add),
       ),
-      body: eventsAsync.when(
-        data: (events) => ListView.builder(
-          itemCount: events.length,
-          itemBuilder: (context, index) {
-            final e = events[index] as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: ListTile(
-                title: Text(e["title"] ?? ""),
-                subtitle: Text("Status: ${e["status"]} · ${e["venue_city"] ?? ""}"),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (action) => _handleEventAction(context, ref, e, action),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
-                    if (e["status"] == "draft")
-                      const PopupMenuItem(value: "publish", child: Text("Publish")),
-                    const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
-                    const PopupMenuItem(value: "delete", child: Text("Delete")),
-                  ],
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(adminEventsProvider),
+        child: eventsAsync.when(
+          data: (events) => ListView.builder(
+            itemCount: events.length,
+            itemBuilder: (context, index) {
+              final e = events[index] as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: ListTile(
+                  title: Text(e["title"] ?? ""),
+                  subtitle: Text("Status: ${e["status"]} · ${e["venue_city"] ?? ""}"),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (action) => _handleEventAction(context, ref, e, action),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
+                      if (e["status"] == "draft")
+                        const PopupMenuItem(value: "publish", child: Text("Publish")),
+                      const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
+                      const PopupMenuItem(value: "delete", child: Text("Delete")),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
+          error: (e, _) => ListView(children: [Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $e")))]),
+          loading: () => const Center(child: CircularProgressIndicator()),
         ),
-        error: (e, _) => Center(child: Text("Error: $e")),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
@@ -455,27 +478,30 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             ),
           ),
           Expanded(
-            child: usersAsync.when(
-              data: (users) => ListView.builder(
-                itemCount: users.length,
-                itemBuilder: (context, index) {
-                  final u = users[index] as Map<String, dynamic>;
-                  return ListTile(
-                    leading: CircleAvatar(child: Text("${u["first_name"]?[0] ?? "?"}")),
-                    title: Text("${u["first_name"] ?? ""} ${u["last_name"] ?? ""}"),
-                    subtitle: Text("${u["role"]} · ${u["email"] ?? u["mobile_no"] ?? ""}"),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () async {
-                        await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
-                        ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
-                      },
-                    ),
-                  );
-                },
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search)),
+              child: usersAsync.when(
+                data: (users) => ListView.builder(
+                  itemCount: users.length,
+                  itemBuilder: (context, index) {
+                    final u = users[index] as Map<String, dynamic>;
+                    return ListTile(
+                      leading: CircleAvatar(child: Text("${u["first_name"]?[0] ?? "?"}")),
+                      title: Text("${u["first_name"] ?? ""} ${u["last_name"] ?? ""}"),
+                      subtitle: Text("${u["role"]} · ${u["email"] ?? u["mobile_no"] ?? ""}"),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () async {
+                          await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
+                          ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
+                        },
+                      ),
+                    );
+                  },
+                ),
+                error: (e, _) => ListView(children: [Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $e")))]),
+                loading: () => const Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) => Center(child: Text("Error: $e")),
-              loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),
         ],
@@ -499,63 +525,108 @@ class AdminBannersScreen extends ConsumerWidget {
         onPressed: () => _showCreateBannerDialog(context, ref),
         child: const Icon(Icons.add),
       ),
-      body: bannersAsync.when(
-        data: (banners) => ListView.builder(
-          itemCount: banners.length,
-          itemBuilder: (context, index) {
-            final b = banners[index] as Map<String, dynamic>;
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              child: ListTile(
-                title: Text(b["title"] ?? "Banner"),
-                subtitle: Text("Placement: ${b["placement"]} · Active: ${b["is_active"]}"),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () async {
-                    await ref.read(dioProvider).delete("/admin/banners/${b["id"]}");
-                    ref.invalidate(adminBannersProvider);
-                  },
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(adminBannersProvider),
+        child: bannersAsync.when(
+          data: (banners) => ListView.builder(
+            itemCount: banners.length,
+            itemBuilder: (context, index) {
+              final b = banners[index] as Map<String, dynamic>;
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: ListTile(
+                  title: Text(b["title"] ?? "Banner"),
+                  subtitle: Text("Placement: ${b["placement"]} · Active: ${b["is_active"]}"),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () async {
+                      await ref.read(dioProvider).delete("/admin/banners/${b["id"]}");
+                      ref.invalidate(adminBannersProvider);
+                    },
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
+          error: (e, _) => ListView(children: [Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $e")))]),
+          loading: () => const Center(child: CircularProgressIndicator()),
         ),
-        error: (e, _) => Center(child: Text("Error: $e")),
-        loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
   }
 
   void _showCreateBannerDialog(BuildContext context, WidgetRef ref) {
     final titleCtrl = TextEditingController();
-    final imageCtrl = TextEditingController();
+    String? bannerUrl;
+    bool uploading = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Create Banner"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Title")),
-            TextField(controller: imageCtrl, decoration: const InputDecoration(labelText: "Image URL")),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("Create Banner"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Title")),
+              const SizedBox(height: 12),
+              if (bannerUrl != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(bannerUrl!, height: 120, width: double.infinity, fit: BoxFit.cover),
+                ),
+                const SizedBox(height: 8),
+              ],
+              OutlinedButton.icon(
+                onPressed: uploading
+                    ? null
+                    : () async {
+                        final picker = ImagePicker();
+                        final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+                        if (image == null) return;
+                        setDialogState(() => uploading = true);
+                        try {
+                          final formData = FormData.fromMap({
+                            "file": await MultipartFile.fromFile(image.path, filename: image.name),
+                          });
+                          final resp = await ref.read(dioProvider).post("/uploads/image", data: formData);
+                          setDialogState(() {
+                            bannerUrl = resp.data["url"];
+                            uploading = false;
+                          });
+                        } catch (e) {
+                          setDialogState(() => uploading = false);
+                          if (!ctx.mounted) return;
+                          ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
+                        }
+                      },
+                icon: uploading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.image),
+                label: Text(uploading ? "Uploading..." : (bannerUrl != null ? "Change Image" : "Pick Banner Image")),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await ref.read(dioProvider).post("/admin/banners", data: {
+                    "title": titleCtrl.text,
+                    "image_url": bannerUrl ?? "",
+                    "placement": "home_top",
+                  });
+                  ref.invalidate(adminBannersProvider);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (e) {
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              },
+              child: const Text("Save"),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          FilledButton(
-            onPressed: () async {
-              await ref.read(dioProvider).post("/admin/banners", data: {
-                "title": titleCtrl.text,
-                "image_url": imageCtrl.text,
-                "placement": "home_top",
-              });
-              ref.invalidate(adminBannersProvider);
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text("Save"),
-          ),
-        ],
       ),
     );
   }

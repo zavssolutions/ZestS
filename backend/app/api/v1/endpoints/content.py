@@ -10,6 +10,7 @@ from app.schemas.content import BannerOut
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.content import StaticPageOut, SupportIssueCreate, TipOfDayOut
+from app.services.mailer import notify_admins_of_support_issue, notify_admins_of_reach_out
 
 router = APIRouter(tags=["content"])
 
@@ -139,6 +140,37 @@ def create_support_issue(
     )
     session.add(issue)
     session.commit()
+    session.refresh(issue)
+    
+    # Notify admins
+    notify_admins_of_support_issue(str(issue.id), payload.email, payload.message)
+    
+    return {"status": "ok", "issue_id": str(issue.id)}
+
+
+class ReachOutRequest(SupportIssueCreate):
+    role: str
+
+@router.post("/support/reach-out", response_model=dict)
+def create_reach_out(
+    payload: ReachOutRequest,
+    current_user: OptionalCurrentUser,
+    session: SessionDep,
+) -> dict:
+    # Store as a support issue with a specific tag or message prefix
+    message = f"[REACH OUT - {payload.role.upper()}] {payload.message}"
+    issue = SupportIssue(
+        user_id=current_user.id if current_user else None,
+        email=payload.email,
+        message=message,
+    )
+    session.add(issue)
+    session.commit()
+    session.refresh(issue)
+    
+    # Notify admins specifically for reach out
+    notify_admins_of_reach_out(str(current_user.id) if current_user else "Anonymous", payload.role, payload.message)
+    
     return {"status": "ok", "issue_id": str(issue.id)}
 
 

@@ -4,20 +4,47 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../core/api_client.dart";
 
 class SupportScreen extends ConsumerStatefulWidget {
-  const SupportScreen({super.key});
+  const SupportScreen({this.prefilledMessage, super.key});
+
+  final String? prefilledMessage;
 
   @override
   ConsumerState<SupportScreen> createState() => _SupportScreenState();
 }
 
 class _SupportScreenState extends ConsumerState<SupportScreen> {
-  final _emailController = TextEditingController();
-  final _messageController = TextEditingController();
+  late final TextEditingController _emailController;
+  late final TextEditingController _messageController;
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _messageController = TextEditingController(text: widget.prefilledMessage);
+  }
 
   Future<void> _submit() async {
     if (_sending) return;
+    final email = _emailController.text.trim();
     final message = _messageController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email is required")),
+      );
+      return;
+    }
+    
+    // Simple email regex validation
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter a valid email address")),
+      );
+      return;
+    }
+
     if (message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter your issue")),
@@ -28,12 +55,13 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
     try {
       await ref.read(dioProvider).post(
         "/support/issues",
-        data: {"email": _emailController.text.trim(), "message": message},
+        data: {"email": email, "message": message},
       );
+      _emailController.clear();
       _messageController.clear();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Issue submitted")),
+        const SnackBar(content: Text("Issue submitted. Admins have been notified.")),
       );
     } catch (e) {
       if (!mounted) return;
@@ -55,7 +83,8 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
           children: [
             TextField(
               controller: _emailController,
-              decoration: const InputDecoration(labelText: "Email (optional)"),
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: "Email"),
             ),
             const SizedBox(height: 12),
             TextField(
