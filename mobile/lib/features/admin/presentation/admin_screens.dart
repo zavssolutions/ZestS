@@ -277,6 +277,25 @@ class AdminEventsScreen extends ConsumerWidget {
     final lngCtrl = TextEditingController();
     String? bannerUrl;
     bool uploading = false;
+    final categories = <Map<String, dynamic>>[
+      {
+        "name": "General",
+        "price": 0.0,
+        "skate_type": "inline",
+        "age_group": "junior(11-14)",
+      }
+    ];
+
+    final skateTypes = ["quad", "inline", "speed", "artistic"];
+    final ageGroups = [
+      "under_5",
+      "cadet(5-7)",
+      "sub-junior(7-9)",
+      "sub-junior(9-11)",
+      "junior(11-14)",
+      "junior(14-17)",
+      "senior(17_above)"
+    ];
 
     showDialog(
       context: context,
@@ -331,6 +350,83 @@ class AdminEventsScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Latitude"), keyboardType: TextInputType.number),
                 TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Longitude"), keyboardType: TextInputType.number),
+                const SizedBox(height: 16),
+                const Divider(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Categories", style: TextStyle(fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      onPressed: () {
+                        setDialogState(() {
+                          categories.add({"name": "", "price": 0.0});
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                ...categories.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final cat = entry.value;
+                  return Card(
+                    margin: const EdgeInsets.only(top: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: TextField(
+                                  decoration: const InputDecoration(labelText: "Category name"),
+                                  onChanged: (v) => cat["name"] = v,
+                                  controller: TextEditingController(text: cat["name"])..selection = TextSelection.collapsed(offset: cat["name"].length),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    categories.removeAt(idx);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: cat["skate_type"],
+                                  items: skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                                  onChanged: (v) => setDialogState(() => cat["skate_type"] = v),
+                                  decoration: const InputDecoration(labelText: "Skate Type"),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: cat["age_group"],
+                                  items: ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                                  onChanged: (v) => setDialogState(() => cat["age_group"] = v),
+                                  decoration: const InputDecoration(labelText: "Age Group"),
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextField(
+                            decoration: const InputDecoration(labelText: "Price (₹)"),
+                            keyboardType: TextInputType.number,
+                            onChanged: (v) => cat["price"] = double.tryParse(v) ?? 0.0,
+                            controller: TextEditingController(text: cat["price"].toString())..selection = TextSelection.collapsed(offset: cat["price"].toString().length),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -350,6 +446,7 @@ class AdminEventsScreen extends ConsumerWidget {
                     "longitude": double.tryParse(lngCtrl.text),
                     "start_at_utc": now.add(const Duration(days: 30)).toIso8601String(),
                     "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
+                    "categories": categories.where((c) => (c["name"] as String).isNotEmpty).toList(),
                   });
                   ref.invalidate(adminEventsProvider);
                   if (!ctx.mounted) return;
@@ -467,7 +564,19 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     final usersAsync = ref.watch(adminUsersProvider(_search.isEmpty ? null : _search));
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Users Management")),
+      appBar: AppBar(
+        title: const Text("Users Management"),
+        actions: [
+          usersAsync.when(
+            data: (users) => Center(child: Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Text("Total: ${users.length}", style: const TextStyle(fontWeight: FontWeight.bold)),
+            )),
+            error: (_, __) => const SizedBox(),
+            loading: () => const SizedBox(),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -485,15 +594,32 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                   itemCount: users.length,
                   itemBuilder: (context, index) {
                     final u = users[index] as Map<String, dynamic>;
+                    final isKid = u["parent_id"] != null;
                     return ListTile(
-                      leading: CircleAvatar(child: Text("${u["first_name"]?[0] ?? "?"}")),
-                      title: Text("${u["first_name"] ?? ""} ${u["last_name"] ?? ""}"),
-                      subtitle: Text("${u["role"]} · ${u["email"] ?? u["mobile_no"] ?? ""}"),
+                      leading: CircleAvatar(
+                        backgroundColor: isKid ? Colors.orange.shade100 : Colors.blue.shade100,
+                        child: Text("${u["first_name"]?[0] ?? "?"}"),
+                      ),
+                      title: Text("${u["first_name"] ?? "No Name"} ${u["last_name"] ?? ""}"),
+                      subtitle: Text("${u["role"]}${isKid ? " (Kid)" : ""} · ${u["email"] ?? u["mobile_no"] ?? "No contact"}"),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () async {
-                          await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
-                          ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text("Delete User?"),
+                              content: const Text("This will remove all associated data. Continue?"),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, Delete")),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
+                            ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
+                          }
                         },
                       ),
                     );

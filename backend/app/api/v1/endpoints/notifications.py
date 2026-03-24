@@ -49,6 +49,9 @@ def trigger_test_notification(
     tokens = session.exec(select(DeviceToken)).all()
     token_values = [token.token for token in tokens]
     
+    if not token_values:
+        return {"status": "ok", "devices_notified": 0, "message": "No devices registered to receive notifications"}
+
     title = "Test Notification"
     body = f"Sent by admin {current_user.email} at {datetime.now(timezone.utc)}"
     data = {"type": "test"}

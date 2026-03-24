@@ -21,6 +21,8 @@ class UserProfileOut(BaseModel):
     favorite_sport: Optional[str]
     profile_picture_url: Optional[str]
     has_completed_profile: bool
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
 
 
 class UserProfileUpsert(BaseModel):
@@ -46,6 +48,8 @@ class UserProfileUpsert(BaseModel):
     skill_level: Optional[str] = None
     years_skating: Optional[int] = None
     preferred_tracks: Optional[str] = None
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
 
 
 class KidCreate(BaseModel):
@@ -53,6 +57,8 @@ class KidCreate(BaseModel):
     last_name: Optional[str] = None
     dob: date
     gender: Optional[str] = "unspecified"
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
 
 
 class UserRoleUpdate(BaseModel):

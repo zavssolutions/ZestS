@@ -1,4 +1,4 @@
-﻿class ProfileModel {
+class ProfileModel {
   const ProfileModel({
     required this.id,
     required this.role,
@@ -9,6 +9,8 @@
     required this.parentId,
     required this.hasCompletedProfile,
     required this.dob,
+    this.skateType,
+    this.ageGroup,
   });
 
   final String id;
@@ -20,6 +22,8 @@
   final String? parentId;
   final bool hasCompletedProfile;
   final String? dob;
+  final String? skateType;
+  final String? ageGroup;
 
   String get displayName {
     final name = "${firstName ?? ""} ${lastName ?? ""}".trim();
@@ -39,6 +43,8 @@
       parentId: json["parent_id"] as String?,
       hasCompletedProfile: (json["has_completed_profile"] as bool?) ?? false,
       dob: json["dob"] as String?,
+      skateType: json["skate_type"] as String?,
+      ageGroup: json["age_group"] as String?,
     );
   }
 
@@ -53,6 +59,8 @@
       "parent_id": parentId,
       "has_completed_profile": hasCompletedProfile,
       "dob": dob,
+      "skate_type": skateType,
+      "age_group": ageGroup,
     };
   }
 }

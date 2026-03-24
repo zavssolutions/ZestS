@@ -103,3 +103,5 @@ class SkaterProfile(SQLModel, table=True):
     years_skating: Optional[int] = Field(default=None)
     preferred_tracks: Optional[str] = Field(default=None)
     school_name: Optional[str] = Field(default=None, max_length=100)
+    skate_type: Optional[str] = Field(default=None, max_length=60)
+    age_group: Optional[str] = Field(default=None, max_length=60)

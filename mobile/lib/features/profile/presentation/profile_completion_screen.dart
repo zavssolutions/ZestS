@@ -30,12 +30,27 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
   final _skillLevelController = TextEditingController();
   final _yearsSkatingController = TextEditingController();
   final _preferredTracksController = TextEditingController();
-
+  String? _skateType;
+  String? _ageGroup;
+  
   // Parent Kid Details
   final _kidFirstNameController = TextEditingController();
   final _kidLastNameController = TextEditingController();
   DateTime? _kidDob;
   String _kidGender = "unspecified";
+  String? _kidSkateType;
+  String? _kidAgeGroup;
+
+  final _skateTypes = ["quad", "inline", "speed", "artistic"];
+  final _ageGroups = [
+    "under_5",
+    "cadet(5-7)",
+    "sub-junior(7-9)",
+    "sub-junior(9-11)",
+    "junior(11-14)",
+    "junior(14-17)",
+    "senior(17_above)"
+  ];
 
   DateTime? _dob;
   String? _role;
@@ -97,6 +112,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             skillLevel: _role == "skater" ? _skillLevelController.text.trim() : null,
             yearsSkating: _role == "skater" ? int.tryParse(_yearsSkatingController.text.trim()) : null,
             preferredTracks: _role == "skater" ? _preferredTracksController.text.trim() : null,
+            skateType: _role == "skater" ? _skateType : null,
+            ageGroup: _role == "skater" ? _ageGroup : null,
           );
           
       if (_role == "parent") {
@@ -105,6 +122,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
               lastName: _kidLastNameController.text.trim(),
               dob: _kidDob!,
               gender: _kidGender,
+              skateType: _kidSkateType,
+              ageGroup: _kidAgeGroup,
             );
       }
           
@@ -212,6 +231,20 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                 ],
                 onChanged: (val) => setState(() => _kidGender = val ?? "unspecified"),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _kidSkateType,
+                decoration: const InputDecoration(labelText: "Kid's Skate Type"),
+                items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (val) => setState(() => _kidSkateType = val),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _kidAgeGroup,
+                decoration: const InputDecoration(labelText: "Kid's Age Group"),
+                items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                onChanged: (val) => setState(() => _kidAgeGroup = val),
+              ),
             ],
             
             if (_role == "trainer") ...[
@@ -241,6 +274,20 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
               TextField(controller: _preferredTracksController, decoration: const InputDecoration(labelText: "Preferred Tracks")),
               const SizedBox(height: 12),
               TextField(controller: _schoolNameController, decoration: const InputDecoration(labelText: "School Name")),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _skateType,
+                decoration: const InputDecoration(labelText: "Skate Type"),
+                items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (val) => setState(() => _skateType = val),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _ageGroup,
+                decoration: const InputDecoration(labelText: "Age Group"),
+                items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                onChanged: (val) => setState(() => _ageGroup = val),
+              ),
             ],
 
             const SizedBox(height: 12),

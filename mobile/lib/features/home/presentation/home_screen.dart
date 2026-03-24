@@ -758,7 +758,13 @@ class _SearchPageState extends ConsumerState<_SearchPage> {
               ),
             ),
             textInputAction: TextInputAction.search,
-            onChanged: (value) => ref.read(searchQueryProvider.notifier).state = value,
+            onChanged: (value) {
+              ref.read(searchQueryProvider.notifier).state = value;
+              if (value.trim().isEmpty) {
+                // Optionally clear results immediately
+                ref.invalidate(searchResultsProvider);
+              }
+            },
             onSubmitted: (value) => ref.read(searchQueryProvider.notifier).state = value,
           ),
           const SizedBox(height: 12),

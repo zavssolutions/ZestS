@@ -64,6 +64,8 @@ def update_me(payload: UserProfileUpsert, current_user: CurrentUser, session: Se
         if payload.years_skating is not None: profile.years_skating = payload.years_skating
         if payload.preferred_tracks is not None: profile.preferred_tracks = payload.preferred_tracks
         if payload.school_name is not None: profile.school_name = payload.school_name
+        if payload.skate_type is not None: profile.skate_type = payload.skate_type
+        if payload.age_group is not None: profile.age_group = payload.age_group
         session.add(profile)
 
     current_user.has_completed_profile = bool(current_user.first_name and current_user.favorite_sport)
@@ -91,6 +93,8 @@ def add_kid(
         last_name=payload.last_name,
         dob=payload.dob,
         gender=payload.gender.lower(),
+        skate_type=payload.skate_type,
+        age_group=payload.age_group,
     )
     session.add(kid)
     session.commit()

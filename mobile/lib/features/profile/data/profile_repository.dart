@@ -39,6 +39,8 @@ class ProfileRepository {
     String? skillLevel,
     int? yearsSkating,
     String? preferredTracks,
+    String? skateType,
+    String? ageGroup,
   }) async {
     final payload = <String, dynamic>{
       "first_name": firstName,
@@ -56,6 +58,8 @@ class ProfileRepository {
     if (skillLevel != null) payload["skill_level"] = skillLevel;
     if (yearsSkating != null) payload["years_skating"] = yearsSkating;
     if (preferredTracks != null) payload["preferred_tracks"] = preferredTracks;
+    if (skateType != null) payload["skate_type"] = skateType;
+    if (ageGroup != null) payload["age_group"] = ageGroup;
 
     final response = await _dio.put<Map<String, dynamic>>("/users/me", data: payload);
     final data = response.data ?? {};
@@ -97,6 +101,8 @@ class ProfileRepository {
     required String lastName,
     required DateTime dob,
     required String gender,
+    String? skateType,
+    String? ageGroup,
   }) async {
     final payload = <String, dynamic>{
       "first_name": firstName,
@@ -104,6 +110,8 @@ class ProfileRepository {
       "dob": DateFormat("yyyy-MM-dd").format(dob),
       "gender": gender,
     };
+    if (skateType != null) payload["skate_type"] = skateType;
+    if (ageGroup != null) payload["age_group"] = ageGroup;
     final response = await _dio.post<Map<String, dynamic>>("/users/me/kids", data: payload);
     final data = response.data ?? {};
     return ProfileModel.fromJson(data);

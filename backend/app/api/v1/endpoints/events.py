@@ -71,10 +71,21 @@ def create_event(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> Event:
-    event = Event(**payload.model_dump(), organizer_user_id=current_user.id)
+    data = payload.model_dump()
+    categories_data = data.pop("categories", [])
+    event = Event(**data, organizer_user_id=current_user.id)
     session.add(event)
     session.commit()
     session.refresh(event)
+    
+    for cat_data in categories_data:
+        category = EventCategory(**cat_data, event_id=event.id)
+        session.add(category)
+    
+    if categories_data:
+        session.commit()
+        session.refresh(event)
+        
     sync_event(event)
     return event
 

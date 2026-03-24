@@ -4,6 +4,7 @@ import "package:flutter/services.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:url_launcher/url_launcher.dart";
+import "package:share_plus/share_plus.dart";
 
 import "../data/event_model.dart";
 import "../data/events_repository.dart";
@@ -31,7 +32,26 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     final kidsAsync = ref.watch(kidsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Event")),
+      appBar: AppBar(
+        title: const Text("Event"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              try {
+                final link = await ref.read(eventsRepositoryProvider).createShareLink(widget.eventId);
+                if (link.isNotEmpty) {
+                  await Share.share("Check out this event: $link");
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Share failed: $e")));
+                }
+              }
+            },
+          ),
+        ],
+      ),
       body: eventsAsync.when(
         data: (events) {
           EventModel? event;
@@ -71,18 +91,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   onPressed: () => launchUrl(mapUrl),
                   child: const Text("Open in Maps"),
                 ),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () async {
-                  final link = await ref.read(eventsRepositoryProvider).createShareLink(eventData.id);
-                  await Clipboard.setData(ClipboardData(text: link));
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(const SnackBar(content: Text("Share link copied")));
-                  }
-                },
-                child: const Text("Share Event"),
-              ),
               const SizedBox(height: 16),
               _buildRegistrationSection(categoriesAsync, profileAsync, kidsAsync),
             ],
@@ -125,7 +133,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             const Text("Register"),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: _selectedCategoryId,
+              value: _selectedCategoryId,
               items: categories
                   .map(
                     (c) => DropdownMenuItem(
@@ -149,7 +157,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       final options = [profile, ...kids];
                       _selectedUserId ??= options.first.id;
                       return DropdownButtonFormField<String>(
-                        initialValue: _selectedUserId,
+                        value: _selectedUserId,
                         items: options
                             .map(
                               (user) => DropdownMenuItem(

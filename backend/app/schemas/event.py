@@ -5,6 +5,17 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 
+class EventCategoryCreate(BaseModel):
+    name: str
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
+    track_type: Optional[str] = None
+    distance: Optional[str] = None
+    gender_restriction: Optional[str] = None
+    max_slots: int = 0
+    price: float = 0
+
+
 class EventCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -15,6 +26,7 @@ class EventCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     banner_image_url: Optional[str] = None
+    categories: list[EventCategoryCreate] = []
 
 
 class EventUpdate(BaseModel):
@@ -50,15 +62,6 @@ class EventStatusUpdate(BaseModel):
     status: str
 
 
-class EventCategoryCreate(BaseModel):
-    name: str
-    skate_type: Optional[str] = None
-    age_group: Optional[str] = None
-    track_type: Optional[str] = None
-    distance: Optional[str] = None
-    gender_restriction: Optional[str] = None
-    max_slots: int = 0
-    price: float = 0
 
 
 class EventCategoryOut(BaseModel):
