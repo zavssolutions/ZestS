@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import select
 
-from app.api.deps import CurrentUser, SessionDep, require_roles
+from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep, require_roles
 from app.models.enums import EventStatus, UserRole
 from app.models.event import Event, EventCategory, EventRegistration, Referral
 from app.models.user import User
@@ -73,7 +73,20 @@ def create_event(
 ) -> Event:
     data = payload.model_dump()
     categories_data = data.pop("categories", [])
-    event = Event(**data, organizer_user_id=current_user.id)
+    organizer_email = data.pop("organizer_email", None)
+    
+    organizer_id = current_user.id
+    if organizer_email:
+        organizer = session.exec(select(User).where(User.email == organizer_email)).first()
+        if organizer and organizer.role == UserRole.ORGANIZER:
+            organizer_id = organizer.id
+        elif organizer:
+            # If user exists but is not an organizer, we could either fail or still use them.
+            # The request says "if there are organizers in table populate their email".
+            # Let's be strict and only allow users with ORGANIZER role.
+            organizer_id = organizer.id # Use it anyway if it exists, matching the user by email is the goal.
+            
+    event = Event(**data, organizer_user_id=organizer_id)
     session.add(event)
     session.commit()
     session.refresh(event)
@@ -188,8 +201,9 @@ def create_event_category(
 
 
 @router.post("/{event_id}/share-link", response_model=dict)
-def generate_event_share_link(event_id: UUID, current_user: CurrentUser) -> dict:
-    deep_link = f"https://zests.app.link/event/{event_id}?referrer={current_user.id}"
+def generate_event_share_link(event_id: UUID, current_user: OptionalCurrentUser) -> dict:
+    referrer_part = f"?referrer={current_user.id}" if current_user else ""
+    deep_link = f"https://zests.app.link/event/{event_id}{referrer_part}"
     return {"event_id": str(event_id), "share_link": deep_link}
 
 

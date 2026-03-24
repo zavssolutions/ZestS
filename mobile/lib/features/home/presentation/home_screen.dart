@@ -628,8 +628,26 @@ class _OrganizerDashboard extends StatelessWidget {
       children: [
         const Text("Organizer Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        const Card(child: ListTile(leading: Icon(Icons.event), title: Text("View Events"))),
-        const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.event),
+            title: const Text("View Events"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AdminEventsScreen()),
+            ),
+          ),
+        ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.leaderboard),
+            title: const Text("View Leaderboard"),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AdminResultsScreen()),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: () => context.push("/support", extra: "I am interested in publishing/advertisement for my events."),

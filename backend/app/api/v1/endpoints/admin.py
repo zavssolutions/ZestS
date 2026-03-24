@@ -259,9 +259,12 @@ def delete_user(
 @router.get("/events", response_model=list[EventOut])
 def list_events(
     session: SessionDep,
-    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
 ) -> list[Event]:
-    statement = select(Event).order_by(Event.start_at_utc.desc())
+    statement = select(Event)
+    if current_user.role == UserRole.ORGANIZER:
+        statement = statement.where(Event.organizer_user_id == current_user.id)
+    statement = statement.order_by(Event.start_at_utc.desc())
     results = session.exec(statement).all()
     _log_action(session, current_user.id, "list_events", "events")
     return results
@@ -487,12 +490,19 @@ def update_support_issue(
 @router.get("/event-results", response_model=list[EventResultOut])
 def list_event_results(
     session: SessionDep,
-    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
     event_id: Optional[UUID] = Query(default=None),
 ) -> list[EventResult]:
     statement = select(EventResult)
+    if current_user.role == UserRole.ORGANIZER:
+        # Filter results by events owned by the organizer
+        organizer_events = select(Event.id).where(Event.organizer_user_id == current_user.id)
+        statement = statement.where(EventResult.event_id.in_(organizer_events))
+        
     if event_id:
+        # If event_id is provided, further filter by it (but only if it's one of their events, handled by the in_ check above if organizer)
         statement = statement.where(EventResult.event_id == event_id)
+        
     results = session.exec(statement).all()
     _log_action(session, current_user.id, "list_event_results", "event_results", None, {"event_id": event_id})
     return results

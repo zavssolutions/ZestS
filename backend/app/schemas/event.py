@@ -19,6 +19,7 @@ class EventCategoryCreate(BaseModel):
 class EventCreate(BaseModel):
     title: str
     description: Optional[str] = None
+    organizer_email: Optional[str] = None
     start_at_utc: datetime
     end_at_utc: datetime
     location_name: str
@@ -46,6 +47,7 @@ class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    organizer_user_id: UUID
     title: str
     description: Optional[str]
     start_at_utc: datetime
