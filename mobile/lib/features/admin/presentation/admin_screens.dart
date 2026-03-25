@@ -216,13 +216,16 @@ class AdminEventsScreen extends ConsumerWidget {
                   subtitle: Text("Status: ${e["status"]} · ${e["venue_city"] ?? ""}"),
                   trailing: PopupMenuButton<String>(
                     onSelected: (action) => _handleEventAction(context, ref, e, action),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
-                      if (e["status"] == "draft")
-                        const PopupMenuItem(value: "publish", child: Text("Publish")),
-                      const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
-                      const PopupMenuItem(value: "delete", child: Text("Delete")),
-                    ],
+                    itemBuilder: (_) {
+                      final status = e["status"]?.toString().toLowerCase();
+                      final isCanceled = status == "canceled";
+                      return [
+                        const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
+                        if (status == "draft") const PopupMenuItem(value: "publish", child: Text("Publish")),
+                        if (!isCanceled) const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
+                        if (!isCanceled) const PopupMenuItem(value: "delete", child: Text("Delete")),
+                      ];
+                    },
                   ),
                 ),
               );
@@ -243,10 +246,44 @@ class AdminEventsScreen extends ConsumerWidget {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event published. Notifications sent.")));
       } else if (action == "cancel") {
+        // Add confirmation
+        if (!context.mounted) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Cancel Event?"),
+            content: const Text("This will notify all registered users. This action cannot be undone."),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
+              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, Cancel")),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+
         await dio.put("/admin/events/${event["id"]}", data: {"status": "canceled"});
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event cancelled. Notifications sent.")));
       } else if (action == "delete") {
+        // Add confirmation for delete too
+        if (!context.mounted) return;
+        final confirm = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Delete Event?"),
+            content: const Text("Are you sure you want to permanently delete this event?"),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text("Delete"),
+              ),
+            ],
+          ),
+        );
+        if (confirm != true) return;
+
         await dio.delete("/admin/events/${event["id"]}");
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event deleted")));
@@ -275,27 +312,28 @@ class AdminEventsScreen extends ConsumerWidget {
     final cityCtrl = TextEditingController();
     final latCtrl = TextEditingController();
     final lngCtrl = TextEditingController();
+    final organizerCtrl = TextEditingController();
+    final priceCtrl = TextEditingController(text: "0.0");
+    DateTime startDate = DateTime.now().add(const Duration(days: 30));
+    DateTime endDate = DateTime.now().add(const Duration(days: 31));
+
     String? bannerUrl;
     bool uploading = false;
     final categories = <Map<String, dynamic>>[
       {
         "name": "General",
         "price": 0.0,
-        "skate_type": "inline",
-        "age_group": "junior(11-14)",
+        "category_type": "Road",
+        "skate_type": "Inline",
+        "distance": "500m",
+        "age_group": "8-10",
       }
     ];
 
-    final skateTypes = ["quad", "inline", "speed", "artistic"];
-    final ageGroups = [
-      "under_5",
-      "cadet(5-7)",
-      "sub-junior(7-9)",
-      "sub-junior(9-11)",
-      "junior(11-14)",
-      "junior(14-17)",
-      "senior(17_above)"
-    ];
+    final categoryTypes = ["Road", "Rink", "ICE", "Artistic"];
+    final skateTypes = ["Inline", "Quad", "toy inline", "tenacity"];
+    final distances = ["200m", "500m", "1000m"];
+    final ageGroups = ["4-6", "6-8", "8-10", "10-12", "12-15", "above 15"];
 
     showDialog(
       context: context,
@@ -306,10 +344,37 @@ class AdminEventsScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Title")),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 3),
-                TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location name")),
+                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Event Title")),
+                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 2),
+                
+                const SizedBox(height: 12),
+                const Text("Common Details", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyan)),
+                TextField(controller: organizerCtrl, decoration: const InputDecoration(labelText: "Organizer Email")),
+                TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Base Price (₹)"), keyboardType: TextInputType.number),
+                
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text("Starts: ${startDate.toLocal().toString().split(' ')[0]}"),
+                  trailing: const Icon(Icons.calendar_month),
+                  onTap: () async {
+                    final date = await showDatePicker(context: ctx, initialDate: startDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (date != null) setDialogState(() => startDate = date);
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text("Ends: ${endDate.toLocal().toString().split(' ')[0]}"),
+                  trailing: const Icon(Icons.calendar_month),
+                  onTap: () async {
+                    final date = await showDatePicker(context: ctx, initialDate: endDate, firstDate: startDate, lastDate: DateTime.now().add(const Duration(days: 365)));
+                    if (date != null) setDialogState(() => endDate = date);
+                  },
+                ),
+
+                const SizedBox(height: 12),
+                TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location/Venue Name")),
                 TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: "City")),
+                
                 const SizedBox(height: 12),
                 // ── Banner Image Picker ──
                 if (bannerUrl != null) ...[
@@ -348,19 +413,31 @@ class AdminEventsScreen extends ConsumerWidget {
                   label: Text(uploading ? "Uploading..." : (bannerUrl != null ? "Change Image" : "Pick Banner Image")),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Latitude"), keyboardType: TextInputType.number),
-                TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Longitude"), keyboardType: TextInputType.number),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Lat"), keyboardType: TextInputType.number)),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Lng"), keyboardType: TextInputType.number)),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 const Divider(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Categories", style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text("Event Categories", style: TextStyle(fontWeight: FontWeight.bold)),
                     IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
+                      icon: const Icon(Icons.add_circle_outline, color: Colors.cyan),
                       onPressed: () {
                         setDialogState(() {
-                          categories.add({"name": "", "price": 0.0});
+                          categories.add({
+                            "name": "", 
+                            "price": double.tryParse(priceCtrl.text) ?? 0.0,
+                            "category_type": "Road",
+                            "skate_type": "Inline",
+                            "distance": "500m",
+                            "age_group": "8-10",
+                          });
                         });
                       },
                     ),
@@ -371,22 +448,22 @@ class AdminEventsScreen extends ConsumerWidget {
                   final cat = entry.value;
                   return Card(
                     margin: const EdgeInsets.only(top: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     child: Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Column(
                         children: [
                           Row(
                             children: [
                               Expanded(
-                                flex: 2,
                                 child: TextField(
-                                  decoration: const InputDecoration(labelText: "Category name"),
+                                  decoration: const InputDecoration(labelText: "Category Name (e.g. Speed 500m)"),
                                   onChanged: (v) => cat["name"] = v,
                                   controller: TextEditingController(text: cat["name"])..selection = TextSelection.collapsed(offset: cat["name"].length),
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                                 onPressed: () {
                                   setDialogState(() {
                                     categories.removeAt(idx);
@@ -395,29 +472,52 @@ class AdminEventsScreen extends ConsumerWidget {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
                           Row(
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
+                                  value: cat["category_type"],
+                                  items: categoryTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
+                                  onChanged: (v) => setDialogState(() => cat["category_type"] = v),
+                                  decoration: const InputDecoration(labelText: "Cat Type"),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
                                   value: cat["skate_type"],
-                                  items: skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                                  items: skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
                                   onChanged: (v) => setDialogState(() => cat["skate_type"] = v),
-                                  decoration: const InputDecoration(labelText: "Skate Type"),
+                                  decoration: const InputDecoration(labelText: "Skate"),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: cat["distance"],
+                                  items: distances.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
+                                  onChanged: (v) => setDialogState(() => cat["distance"] = v),
+                                  decoration: const InputDecoration(labelText: "Distance"),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
                                   value: cat["age_group"],
-                                  items: ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                                  items: ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 12)))).toList(),
                                   onChanged: (v) => setDialogState(() => cat["age_group"] = v),
-                                  decoration: const InputDecoration(labelText: "Age Group"),
+                                  decoration: const InputDecoration(labelText: "Age"),
                                 ),
                               ),
                             ],
                           ),
                           TextField(
-                            decoration: const InputDecoration(labelText: "Price (₹)"),
+                            decoration: const InputDecoration(labelText: "Price for this Category (₹)"),
                             keyboardType: TextInputType.number,
                             onChanged: (v) => cat["price"] = double.tryParse(v) ?? 0.0,
                             controller: TextEditingController(text: cat["price"].toString())..selection = TextSelection.collapsed(offset: cat["price"].toString().length),
@@ -434,18 +534,19 @@ class AdminEventsScreen extends ConsumerWidget {
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
             FilledButton(
               onPressed: () async {
-                final now = DateTime.now().toUtc();
                 try {
                   await ref.read(dioProvider).post("/events", data: {
                     "title": titleCtrl.text,
                     "description": descCtrl.text,
+                    "organizer_email": organizerCtrl.text,
+                    "price": double.tryParse(priceCtrl.text) ?? 0.0,
                     "location_name": locationCtrl.text,
                     "venue_city": cityCtrl.text,
                     "banner_image_url": bannerUrl,
                     "latitude": double.tryParse(latCtrl.text),
                     "longitude": double.tryParse(lngCtrl.text),
-                    "start_at_utc": now.add(const Duration(days: 30)).toIso8601String(),
-                    "end_at_utc": now.add(const Duration(days: 31)).toIso8601String(),
+                    "start_at_utc": startDate.toUtc().toIso8601String(),
+                    "end_at_utc": endDate.toUtc().toIso8601String(),
                     "categories": categories.where((c) => (c["name"] as String).isNotEmpty).toList(),
                   });
                   ref.invalidate(adminEventsProvider);
@@ -456,7 +557,7 @@ class AdminEventsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
                 }
               },
-              child: const Text("Save (Draft)"),
+              child: const Text("Create Event (Draft)"),
             ),
           ],
         ),

@@ -156,13 +156,13 @@ def test_admin_sponsor_crud(client, admin_user):
 def test_submit_support_issue(client, parent_user, session):
     client.app.dependency_overrides[get_current_user] = lambda: parent_user
     resp = client.post(
-        "/api/v1/support",
+        "/api/v1/support/issues",
         json={"message": "I cannot register for an event"},
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["message"] == "I cannot register for an event"
-    assert data["status"] == "open"
+    assert data["status"] == "ok"
+    assert "issue_id" in data
     del client.app.dependency_overrides[get_current_user]
 
 

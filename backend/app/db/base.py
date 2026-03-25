@@ -32,7 +32,31 @@ def _patch_schema(engine) -> None:
                 conn.commit()
                 logger.info("Patched: added banners.share_url")
 
-            # 2. Convert native PG enum columns to VARCHAR (one-time)
+            # 2. events.price — add if missing
+            if _col_type("events", "price") is None:
+                conn.execute(text("ALTER TABLE events ADD COLUMN price NUMERIC DEFAULT 0"))
+                conn.commit()
+                logger.info("Patched: added events.price")
+
+            # 3. events.organizer_id — add if missing
+            if _col_type("events", "organizer_id") is None:
+                conn.execute(text("ALTER TABLE events ADD COLUMN organizer_id INTEGER"))
+                conn.commit()
+                logger.info("Patched: added events.organizer_id")
+
+            # 4. event_categories.category_type — add if missing
+            if _col_type("event_categories", "category_type") is None:
+                conn.execute(text("ALTER TABLE event_categories ADD COLUMN category_type VARCHAR(50)"))
+                conn.commit()
+                logger.info("Patched: added event_categories.category_type")
+
+            # 5. organizer_profiles.organizer_id — add if missing
+            if _col_type("organizer_profiles", "organizer_id") is None:
+                conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN organizer_id SERIAL"))
+                conn.commit()
+                logger.info("Patched: added organizer_profiles.organizer_id")
+
+            # 6. Convert native PG enum columns to VARCHAR (one-time)
             enum_cols = [
                 ("users", "role"),
                 ("users", "sport"),

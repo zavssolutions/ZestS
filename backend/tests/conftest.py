@@ -94,7 +94,6 @@ def sample_event_fixture(session: Session, admin_user: User) -> Event:
 
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Test Skating Championship 2026",
         description="Annual skating competition for all age groups",
         start_at_utc=datetime.now(timezone.utc) + timedelta(days=30),

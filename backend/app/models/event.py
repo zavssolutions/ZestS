@@ -12,7 +12,7 @@ class Event(SQLModel, table=True):
     __tablename__ = "events"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    organizer_user_id: UUID = Field(foreign_key="users.id")
+    organizer_id: Optional[int] = Field(default=None, foreign_key="organizer_profiles.organizer_id")
 
     title: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
@@ -26,6 +26,7 @@ class Event(SQLModel, table=True):
     longitude: Optional[float] = Field(default=None)
 
     banner_image_url: Optional[str] = Field(default=None, max_length=500)
+    price: float = Field(default=0, sa_column=Column(Numeric(10, 2), nullable=False))
     status: str = Field(default="draft", sa_column=Column(String(20), nullable=False, server_default="draft"))
 
     created_at: datetime = Field(
@@ -45,9 +46,10 @@ class EventCategory(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    event_id: UUID = Field(foreign_key="events.id")
+    event_id: UUID = Field(sa_column=Column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False))
 
     name: str = Field(max_length=120)
+    category_type: Optional[str] = Field(default=None, max_length=60)
     skate_type: Optional[str] = Field(default=None, max_length=60)
     age_group: Optional[str] = Field(default=None, max_length=60)
     track_type: Optional[str] = Field(default=None, max_length=60)
@@ -64,8 +66,8 @@ class EventRegistration(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    event_id: UUID = Field(foreign_key="events.id")
-    category_id: UUID = Field(foreign_key="event_categories.id")
+    event_id: UUID = Field(sa_column=Column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False))
+    category_id: UUID = Field(sa_column=Column(ForeignKey("event_categories.id", ondelete="CASCADE"), nullable=False))
     user_id: UUID = Field(foreign_key="users.id")
 
     payment_id: Optional[UUID] = Field(default=None, foreign_key="payments.id")
@@ -85,8 +87,8 @@ class EventResult(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    event_id: UUID = Field(foreign_key="events.id")
-    category_id: UUID = Field(foreign_key="event_categories.id")
+    event_id: UUID = Field(sa_column=Column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False))
+    category_id: UUID = Field(sa_column=Column(ForeignKey("event_categories.id", ondelete="CASCADE"), nullable=False))
     user_id: UUID = Field(foreign_key="users.id")
 
     rank: Optional[int] = Field(default=None)
@@ -103,8 +105,8 @@ class Payment(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id")
-    event_id: UUID = Field(foreign_key="events.id")
-    category_id: Optional[UUID] = Field(default=None, foreign_key="event_categories.id")
+    event_id: UUID = Field(sa_column=Column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False))
+    category_id: Optional[UUID] = Field(default=None, sa_column=Column(ForeignKey("event_categories.id", ondelete="CASCADE"), nullable=True))
 
     provider: str = Field(default="none", max_length=30)
     amount: float = Field(default=0, sa_column=Column(Numeric(10, 2), nullable=False))
@@ -122,7 +124,7 @@ class Referral(SQLModel, table=True):
     )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    event_id: UUID = Field(foreign_key="events.id")
+    event_id: UUID = Field(sa_column=Column(ForeignKey("events.id", ondelete="CASCADE"), nullable=False))
     referrer_user_id: UUID = Field(foreign_key="users.id")
     referred_user_id: UUID = Field(foreign_key="users.id")
     points: int = Field(default=0)

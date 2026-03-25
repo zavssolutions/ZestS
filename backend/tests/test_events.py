@@ -56,9 +56,10 @@ def test_list_event_categories(client, sample_event, sample_category):
 
 def test_generate_share_link(client, sample_event, parent_user, session):
     # Mock auth dependency to return parent_user
-    from app.api.deps import get_current_user
+    from app.api.deps import get_current_user, get_optional_current_user
     app = client.app
     app.dependency_overrides[get_current_user] = lambda: parent_user
+    app.dependency_overrides[get_optional_current_user] = lambda: parent_user
     resp = client.post(f"/api/v1/events/{sample_event.id}/share-link")
     assert resp.status_code == 200
     data = resp.json()
@@ -66,6 +67,7 @@ def test_generate_share_link(client, sample_event, parent_user, session):
     assert str(sample_event.id) in data["share_link"]
     assert str(parent_user.id) in data["share_link"]
     del app.dependency_overrides[get_current_user]
+    del app.dependency_overrides[get_optional_current_user]
 
 
 # ── Events: referrals ───────────────────────────────────────────────

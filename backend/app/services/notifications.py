@@ -1,4 +1,5 @@
 from typing import Iterable
+import uuid
 
 from firebase_admin import messaging
 from sqlmodel import Session, select
@@ -21,7 +22,10 @@ def _send_fcm(tokens: Iterable[str], title: str, body: str, data: dict) -> None:
     messaging.send_multicast(message)
 
 
-def send_event_status(session: Session, event_id: str, status: str) -> None:
+def send_event_status(session: Session, event_id: str | uuid.UUID, status: str) -> None:
+    from uuid import UUID
+    if isinstance(event_id, str):
+        event_id = UUID(event_id)
     event = session.get(Event, event_id)
     if event is None:
         return

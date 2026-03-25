@@ -42,18 +42,30 @@ class PaymentStatus(StrEnum):
     REFUNDED = "refunded"
 
 
+class CategoryType(StrEnum):
+    ROAD = "Road"
+    RINK = "Rink"
+    ICE = "ICE"
+    ARTISTIC = "Artistic"
+
+
 class SkateType(StrEnum):
-    QUAD = "quad"
-    INLINE = "inline"
-    SPEED = "speed"
-    ARTISTIC = "artistic"
+    INLINE = "Inline"
+    QUAD = "Quad"
+    TOY_INLINE = "toy inline"
+    TENACITY = "tenacity"
+
+
+class Distance(StrEnum):
+    D200M = "200m"
+    D500M = "500m"
+    D1000M = "1000m"
 
 
 class AgeGroup(StrEnum):
-    UNDER_5 = "under_5"
-    CADET_5_7 = "cadet(5-7)"
-    SUB_JUNIOR_7_9 = "sub-junior(7-9)"
-    SUB_JUNIOR_9_11 = "sub-junior(9-11)"
-    JUNIOR_11_14 = "junior(11-14)"
-    JUNIOR_14_17 = "junior(14-17)"
-    SENIOR_17_ABOVE = "senior(17_above)"
+    A4_6 = "4-6"
+    A6_8 = "6-8"
+    A8_10 = "8-10"
+    A10_12 = "10-12"
+    A12_15 = "12-15"
+    ABOVE_15 = "above 15"

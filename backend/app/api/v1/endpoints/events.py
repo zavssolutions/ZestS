@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -7,7 +8,7 @@ from sqlmodel import select
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep, require_roles
 from app.models.enums import EventStatus, UserRole
 from app.models.event import Event, EventCategory, EventRegistration, Referral
-from app.models.user import User
+from app.models.user import User, OrganizerProfile
 from app.schemas.event import (
     EventCreate,
     EventCategoryCreate,
@@ -75,18 +76,24 @@ def create_event(
     categories_data = data.pop("categories", [])
     organizer_email = data.pop("organizer_email", None)
     
-    organizer_id = current_user.id
+    # Default to current user's organizer profile if they are an organizer
+    target_organizer_id = None
+    
+    # helper to get organizer_id from user_id
+    def get_org_id(u_id: UUID) -> Optional[int]:
+        profile = session.get(OrganizerProfile, u_id)
+        return profile.organizer_id if profile else None
+
     if organizer_email:
-        organizer = session.exec(select(User).where(User.email == organizer_email)).first()
-        if organizer and organizer.role == UserRole.ORGANIZER:
-            organizer_id = organizer.id
-        elif organizer:
-            # If user exists but is not an organizer, we could either fail or still use them.
-            # The request says "if there are organizers in table populate their email".
-            # Let's be strict and only allow users with ORGANIZER role.
-            organizer_id = organizer.id # Use it anyway if it exists, matching the user by email is the goal.
-            
-    event = Event(**data, organizer_user_id=organizer_id)
+        organizer_user = session.exec(select(User).where(User.email == organizer_email)).first()
+        if organizer_user:
+            target_organizer_id = get_org_id(organizer_user.id)
+    
+    if target_organizer_id is None:
+        # Fallback to current user if they are organizer
+        target_organizer_id = get_org_id(current_user.id)
+
+    event = Event(**data, organizer_id=target_organizer_id)
     session.add(event)
     session.commit()
     session.refresh(event)
@@ -243,4 +250,3 @@ def referral_install(event_id: UUID, payload: ReferralAction, session: SessionDe
 def referral_view(event_id: UUID, payload: ReferralAction, session: SessionDep) -> dict:
     referral = _upsert_referral(event_id, payload, points_delta=1, session=session)
     return {"status": "ok", "points": referral.points}
-

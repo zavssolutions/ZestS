@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
@@ -45,4 +46,13 @@ def healthz() -> dict:
     return {"status": "ok"}
 
 
+import os
+from pathlib import Path
+
+# Ensure static directories exist before mounting
+static_dir = Path("static")
+static_dir.mkdir(exist_ok=True)
+(static_dir / "uploads").mkdir(exist_ok=True)
+
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+app.mount("/static", StaticFiles(directory="static"), name="static")

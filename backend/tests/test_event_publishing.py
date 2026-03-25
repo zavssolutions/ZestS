@@ -139,7 +139,6 @@ def test_published_event_visible_on_upcoming(client, admin_user, session):
     now = datetime.now(timezone.utc)
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Visible Published Event",
         location_name="Open Rink",
         start_at_utc=now + timedelta(days=5),
@@ -160,7 +159,6 @@ def test_draft_event_not_visible_on_upcoming(client, admin_user, session):
     now = datetime.now(timezone.utc)
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Hidden Draft Event",
         location_name="Private Arena",
         start_at_utc=now + timedelta(days=5),
@@ -181,7 +179,6 @@ def test_published_event_visible_anonymous(client, admin_user, session):
     now = datetime.now(timezone.utc)
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Anonymous Visible Event",
         location_name="Public Park",
         start_at_utc=now + timedelta(days=3),
@@ -203,7 +200,6 @@ def test_draft_event_not_visible_anonymous(client, admin_user, session):
     now = datetime.now(timezone.utc)
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Hidden Anonymous Draft",
         location_name="Nowhere",
         start_at_utc=now + timedelta(days=3),
@@ -232,7 +228,6 @@ def test_event_count_increases_after_publish(client, admin_user, session):
     now = datetime.now(timezone.utc)
     event = Event(
         id=uuid.uuid4(),
-        organizer_user_id=admin_user.id,
         title="Extra Published Event",
         location_name="New Track",
         start_at_utc=now + timedelta(days=40),

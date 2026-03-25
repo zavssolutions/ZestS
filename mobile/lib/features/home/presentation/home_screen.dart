@@ -462,7 +462,7 @@ class _DashboardPage extends ConsumerWidget {
     }
 
     switch (profile.role) {
-      case "parent": return _ParentDashboard(profile: profile);
+      case "parent": return const _ParentDashboard();
       case "kid":
       case "skater": return _SkaterDashboard();
       case "admin": return _AdminDashboard();
@@ -474,8 +474,7 @@ class _DashboardPage extends ConsumerWidget {
 }
 
 class _ParentDashboard extends ConsumerStatefulWidget {
-  final ProfileModel profile;
-  const _ParentDashboard({required this.profile});
+  const _ParentDashboard();
   @override
   ConsumerState<_ParentDashboard> createState() => _ParentDashboardState();
 }
@@ -487,132 +486,412 @@ class _ParentDashboardState extends ConsumerState<_ParentDashboard> {
   Widget build(BuildContext context) {
     final kidsAsync = ref.watch(kidsProvider);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("My Kids", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            TextButton.icon(
-              icon: const Icon(Icons.add),
-              label: const Text("Add Kid"),
-              onPressed: () => _showAddKidDialog(context, ref),
-            ),
-          ],
-        ),
-        kidsAsync.when(
-          data: (kids) {
-            if (kids.isEmpty) {
-              return const Card(child: Padding(padding: EdgeInsets.all(16), child: Text("No kids added yet.")));
-            }
-            return DropdownButtonFormField<ProfileModel>(
-              decoration: const InputDecoration(labelText: "Select Kid"),
-              value: selectedKid ?? kids.first,
-              items: kids.map((appKid) {
-                return DropdownMenuItem(value: appKid, child: Text(appKid.displayName));
-              }).toList(),
-              onChanged: (val) => setState(() => selectedKid = val),
-            );
-          },
-          error: (e, st) => Text("Error loading kids: $e"),
-          loading: () => const Center(child: CircularProgressIndicator()),
-        ),
-        const SizedBox(height: 24),
-        if (selectedKid != null) ...[
-          Text("${selectedKid!.displayName}'s Events", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const Card(child: ListTile(title: Text("No registered events."))),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Parent Dashboard',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              IconButton.filledTonal(
+                icon: const Icon(Icons.person_add),
+                onPressed: () => _showAddKidDialog(context, ref),
+                tooltip: "Add Kid",
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
-          Text("${selectedKid!.displayName}'s Results", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const Card(child: ListTile(title: Text("No past results."))),
-        ] else if (kidsAsync.valueOrNull?.isNotEmpty == true) ...[
-          Text("${kidsAsync.value!.first.displayName}'s Events", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const Card(child: ListTile(title: Text("No registered events."))),
-          const SizedBox(height: 16),
-          Text("${kidsAsync.value!.first.displayName}'s Results", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const Card(child: ListTile(title: Text("No past results."))),
-        ]
-      ],
+          // Stats
+          Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: "Total Kids",
+                  value: kidsAsync.valueOrNull?.length.toString() ?? "0",
+                  icon: Icons.child_care,
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: _StatCard(
+                  label: "Upcoming",
+                  value: "0",
+                  icon: Icons.calendar_today,
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          kidsAsync.when(
+            data: (kids) {
+              if (kids.isEmpty) {
+                return const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: Text("No kids added yet. Add a kid to get started!")),
+                  ),
+                );
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<ProfileModel>(
+                    decoration: const InputDecoration(
+                      labelText: "Quick Select Kid",
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    value: selectedKid ?? (kids.isNotEmpty ? kids.first : null),
+                    items: kids.map((appKid) {
+                      return DropdownMenuItem(value: appKid, child: Text(appKid.displayName));
+                    }).toList(),
+                    onChanged: (val) => setState(() => selectedKid = val),
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _DashboardActionCard(
+                        title: "Manage Kids",
+                        icon: Icons.people_outline,
+                        color: Colors.indigo,
+                        onTap: () {/* Navigate to kids list */},
+                      ),
+                      _DashboardActionCard(
+                        title: "Register Event",
+                        icon: Icons.app_registration,
+                        color: Colors.green,
+                        onTap: () {/* Navigate to events search */},
+                      ),
+                      _DashboardActionCard(
+                        title: "Past Results",
+                        icon: Icons.workspace_premium,
+                        color: Colors.amber,
+                        onTap: () {/* Navigate to results */},
+                      ),
+                      _DashboardActionCard(
+                        title: "Support",
+                        icon: Icons.help_outline,
+                        color: Colors.teal,
+                        onTap: () => context.push("/support"),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            },
+            error: (e, st) => Text("Error loading kids: $e"),
+            loading: () => const Center(child: CircularProgressIndicator()),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _SkaterDashboard extends ConsumerWidget {
+  const _SkaterDashboard();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        Text("My Registered Events", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Card(child: ListTile(title: Text("No registered events."))),
-        SizedBox(height: 16),
-        Text("My Past Results", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        Card(child: ListTile(title: Text("No results available."))),
-      ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Skater Dashboard',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Expanded(
+                child: _StatCard(
+                  label: "My Points",
+                  value: "0",
+                  icon: Icons.stars,
+                  color: Colors.purple,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _StatCard(
+                  label: "My Rank",
+                  value: "-",
+                  icon: Icons.leaderboard,
+                  color: Colors.cyan,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: [
+              _DashboardActionCard(
+                title: "Register Event",
+                icon: Icons.event_available,
+                color: Colors.green,
+                onTap: () {},
+              ),
+              _DashboardActionCard(
+                title: "My Results",
+                icon: Icons.emoji_events,
+                color: Colors.amber,
+                onTap: () {},
+              ),
+              _DashboardActionCard(
+                title: "Leaderboard",
+                icon: Icons.assessment,
+                color: Colors.blue,
+                onTap: () {},
+              ),
+              _DashboardActionCard(
+                title: "Refer & Earn",
+                icon: Icons.share,
+                color: Colors.pink,
+                onTap: () {},
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _AdminDashboard extends StatelessWidget {
+  const _AdminDashboard();
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      padding: const EdgeInsets.all(16),
-      crossAxisSpacing: 10,
-      mainAxisSpacing: 10,
-      children: [
-        _AdminCard(
-          title: "Manage Events",
-          icon: Icons.event,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AdminEventsScreen()),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Admin Dashboard',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
-        ),
-        _AdminCard(
-          title: "Manage Users",
-          icon: Icons.people,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AdminUsersScreen()),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Expanded(
+                child: _StatCard(label: "Active Events", value: "...", icon: Icons.event, color: Colors.blue),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _StatCard(label: "Total Users", value: "...", icon: Icons.people, color: Colors.indigo),
+              ),
+            ],
           ),
-        ),
-        _AdminCard(
-          title: "Manage Results",
-          icon: Icons.emoji_events,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AdminResultsScreen()),
+          const SizedBox(height: 24),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: [
+              _DashboardActionCard(
+                title: "Manage Events",
+                icon: Icons.edit_calendar,
+                color: Colors.deepOrange,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminEventsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Manage Users",
+                icon: Icons.manage_accounts,
+                color: Colors.blueGrey,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminUsersScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Manage Results",
+                icon: Icons.fact_check,
+                color: Colors.amber,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminResultsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Notifications",
+                icon: Icons.campaign,
+                color: Colors.redAccent,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const _AdminNotificationsScreen())),
+              ),
+            ],
           ),
-        ),
-        _AdminCard(
-          title: "Notifications",
-          icon: Icons.notifications,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const _AdminNotificationsScreen()),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _AdminCard extends StatelessWidget {
-  final String title;
+class _OrganizerDashboard extends StatelessWidget {
+  const _OrganizerDashboard();
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Organizer Dashboard',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Expanded(
+                child: _StatCard(label: "My Events", value: "...", icon: Icons.event, color: Colors.blue),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _StatCard(label: "Registrations", value: "...", icon: Icons.how_to_reg, color: Colors.teal),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: [
+              _DashboardActionCard(
+                title: "Create Event",
+                icon: Icons.add_circle_outline,
+                color: Colors.green,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminEventsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "My Events",
+                icon: Icons.event_note,
+                color: Colors.blue,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminEventsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Results",
+                icon: Icons.emoji_events_outlined,
+                color: Colors.amber,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminResultsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Publishing",
+                icon: Icons.ads_click,
+                color: Colors.purple,
+                onTap: () => context.push("/support", extra: "Interested in publishing/advertisement."),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SponsorDashboard extends StatelessWidget {
+  const _SponsorDashboard();
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sponsor Portal',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          const Row(
+            children: [
+              Expanded(
+                child: _StatCard(label: "Brand Reach", value: "...", icon: Icons.trending_up, color: Colors.indigo),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _StatCard(label: "Active Ads", value: "0", icon: Icons.campaign, color: Colors.deepOrange),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: [
+              _DashboardActionCard(
+                title: "View Events",
+                icon: Icons.event,
+                color: Colors.blue,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminEventsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Leaderboard",
+                icon: Icons.emoji_events,
+                color: Colors.amber,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminResultsScreen())),
+              ),
+              _DashboardActionCard(
+                title: "Sponsorship",
+                icon: Icons.handshake,
+                color: Colors.green,
+                onTap: () => context.push("/support", extra: "Interested in sponsorship."),
+              ),
+              _DashboardActionCard(
+                title: "Brand Ads",
+                icon: Icons.campaign_outlined,
+                color: Colors.purple,
+                onTap: () => context.push("/support", extra: "Interested in advertisement."),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
   final IconData icon;
-  final VoidCallback onTap;
-  const _AdminCard({required this.title, required this.icon, required this.onTap});
+  final Color color;
+
+  const _StatCard({required this.label, required this.value, required this.icon, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
+      elevation: 0,
+      color: color.withOpacity(0.1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: color.withOpacity(0.2))),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: Colors.cyan),
+            Icon(icon, color: color, size: 28),
             const SizedBox(height: 8),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color.withOpacity(0.8))),
           ],
         ),
       ),
@@ -620,62 +899,39 @@ class _AdminCard extends StatelessWidget {
   }
 }
 
-class _OrganizerDashboard extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text("Organizer Actions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.event),
-            title: const Text("View Events"),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AdminEventsScreen()),
-            ),
-          ),
-        ),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.leaderboard),
-            title: const Text("View Leaderboard"),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AdminResultsScreen()),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => context.push("/support", extra: "I am interested in publishing/advertisement for my events."),
-          icon: const Icon(Icons.campaign),
-          label: const Text("Reach out for publishing / advertisement"),
-        ),
-      ],
-    );
-  }
-}
+class _DashboardActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
 
-class _SponsorDashboard extends StatelessWidget {
+  const _DashboardActionCard({required this.title, required this.icon, required this.color, required this.onTap});
+
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        const Text("Sponsor Portal", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 12),
-        const Card(child: ListTile(leading: Icon(Icons.event), title: Text("View Events"))),
-        const Card(child: ListTile(leading: Icon(Icons.leaderboard), title: Text("View Leaderboard"))),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => context.push("/support", extra: "I am interested in sponsorship/advertisement opportunities."),
-          icon: const Icon(Icons.handshake),
-          label: const Text("Reach out for publishing / advertisement"),
+    return Card(
+      elevation: 2,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+                child: Icon(icon, color: color, size: 30),
+              ),
+              const SizedBox(height: 12),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 }

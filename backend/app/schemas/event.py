@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 class EventCategoryCreate(BaseModel):
     name: str
+    category_type: Optional[str] = None
     skate_type: Optional[str] = None
     age_group: Optional[str] = None
     track_type: Optional[str] = None
@@ -20,6 +21,7 @@ class EventCreate(BaseModel):
     title: str
     description: Optional[str] = None
     organizer_email: Optional[str] = None
+    price: float = 0
     start_at_utc: datetime
     end_at_utc: datetime
     location_name: str
@@ -33,6 +35,7 @@ class EventCreate(BaseModel):
 class EventUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    price: Optional[float] = None
     start_at_utc: Optional[datetime] = None
     end_at_utc: Optional[datetime] = None
     location_name: Optional[str] = None
@@ -47,9 +50,10 @@ class EventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    organizer_user_id: UUID
+    organizer_id: Optional[int]
     title: str
     description: Optional[str]
+    price: float
     start_at_utc: datetime
     end_at_utc: datetime
     location_name: str
@@ -72,6 +76,7 @@ class EventCategoryOut(BaseModel):
     id: UUID
     event_id: UUID
     name: str
+    category_type: Optional[str]
     skate_type: Optional[str]
     age_group: Optional[str]
     track_type: Optional[str]

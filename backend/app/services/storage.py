@@ -1,5 +1,7 @@
-﻿import json
+import json
+import logging
 from functools import lru_cache
+from pathlib import Path
 
 from google.cloud import storage
 
@@ -20,9 +22,33 @@ def get_storage_client() -> storage.Client:
     return storage.Client()
 
 
+def _save_local(object_name: str, data: bytes) -> str:
+    # Create a local 'uploads' directory
+    upload_dir = Path("static/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save file locally
+    file_path = upload_dir / object_name.split("/")[-1]
+    with open(file_path, "wb") as f:
+        f.write(data)
+    
+    # Return a relative URL (assuming static files are served)
+    return f"/static/uploads/{file_path.name}"
+
+
 def upload_bytes(object_name: str, data: bytes, content_type: str) -> str:
     settings = get_settings()
-    bucket = get_storage_client().bucket(settings.gcp_storage_bucket)
-    blob = bucket.blob(object_name)
-    blob.upload_from_string(data, content_type=content_type)
-    return blob.public_url
+    
+    # Fallback for local development if GCP is not configured
+    if not settings.gcp_storage_bucket or not settings.gcp_storage_credentials_json:
+        return _save_local(object_name, data)
+
+    try:
+        bucket = get_storage_client().bucket(settings.gcp_storage_bucket)
+        blob = bucket.blob(object_name)
+        blob.upload_from_string(data, content_type=content_type)
+        return blob.public_url
+    except Exception as e:
+        # If GCP fails, fallback to local as well to avoid blocking
+        logging.warning("GCP Upload failed, falling back to local: %s", e)
+        return _save_local(object_name, data)

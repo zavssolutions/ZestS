@@ -13,7 +13,7 @@ from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting, Sta
 from pydantic import BaseModel
 from app.models.enums import UserRole
 from app.models.event import Event, EventRegistration, EventResult
-from app.models.user import User
+from app.models.user import User, OrganizerProfile
 from app.schemas.audit import AuditLogOut
 from app.schemas.content import (
     BannerCreate,
@@ -234,8 +234,8 @@ def delete_user(
         session.exec(text("DELETE FROM payments WHERE user_id = :uid"), params={"uid": uid})
         # 8. Delete referrals (both directions)
         session.exec(text("DELETE FROM referrals WHERE referrer_user_id = :uid OR referred_user_id = :uid"), params={"uid": uid})
-        # 9. Nullify organizer_user_id on events organized by this user
-        session.exec(text("UPDATE events SET organizer_user_id = :admin_uid WHERE organizer_user_id = :uid"), params={"uid": uid, "admin_uid": str(current_user.id)})
+        # 9. Nullify organizer_id on events organized by this user
+        session.exec(text("UPDATE events SET organizer_id = NULL WHERE organizer_id = (SELECT organizer_id FROM organizer_profiles WHERE user_id = :uid)"), params={"uid": uid})
         # 10. Detach children (kid users)
         session.exec(text("UPDATE users SET parent_id = NULL WHERE parent_id = :uid"), params={"uid": uid})
         # 11. Delete role-specific profiles (CASCADE should handle, but be explicit)
@@ -263,7 +263,13 @@ def list_events(
 ) -> list[Event]:
     statement = select(Event)
     if current_user.role == UserRole.ORGANIZER:
-        statement = statement.where(Event.organizer_user_id == current_user.id)
+        # Get organizer_id for the current user
+        profile = session.get(OrganizerProfile, current_user.id)
+        if profile:
+            statement = statement.where(Event.organizer_id == profile.organizer_id)
+        else:
+            # If no profile, they see nothing
+            return []
     statement = statement.order_by(Event.start_at_utc.desc())
     results = session.exec(statement).all()
     _log_action(session, current_user.id, "list_events", "events")
@@ -297,11 +303,29 @@ def delete_event(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> dict:
+    from sqlmodel import delete
+    from app.models.event import EventCategory, EventRegistration, EventResult, Payment, Referral
+    
     event = session.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
-    session.delete(event)
-    session.commit()
+    
+    try:
+        # Explicitly delete related records using SQLModel delete constructs
+        session.exec(delete(EventResult).where(EventResult.event_id == event_id))
+        session.exec(delete(EventRegistration).where(EventRegistration.event_id == event_id))
+        session.exec(delete(EventCategory).where(EventCategory.event_id == event_id))
+        session.exec(delete(Payment).where(Payment.event_id == event_id))
+        session.exec(delete(Referral).where(Referral.event_id == event_id))
+        
+        session.delete(event)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        import traceback
+        detail = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to delete event: {e}\n{detail}")
+        
     _log_action(session, current_user.id, "delete_event", "events", event_id)
     return {"status": "ok"}
 
@@ -496,8 +520,12 @@ def list_event_results(
     statement = select(EventResult)
     if current_user.role == UserRole.ORGANIZER:
         # Filter results by events owned by the organizer
-        organizer_events = select(Event.id).where(Event.organizer_user_id == current_user.id)
-        statement = statement.where(EventResult.event_id.in_(organizer_events))
+        profile = session.get(OrganizerProfile, current_user.id)
+        if profile:
+            organizer_events = select(Event.id).where(Event.organizer_id == profile.organizer_id)
+            statement = statement.where(EventResult.event_id.in_(organizer_events))
+        else:
+            return []
         
     if event_id:
         # If event_id is provided, further filter by it (but only if it's one of their events, handled by the in_ check above if organizer)
