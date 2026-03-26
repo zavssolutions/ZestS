@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
@@ -9,6 +10,22 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.base import create_db_and_tables
 from app.db.session import engine
+
+import time
+import logging
+logger = logging.getLogger(__name__)
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    formatted_process_time = "{0:.2f}".format(process_time)
+    logger.info(
+        f"DEBUG_REQUEST: {request.method} {request.url.path} - "
+        f"Completed in {formatted_process_time}ms - Status: {response.status_code}"
+    )
+    return response
 
 settings = get_settings()
 configure_logging()
@@ -27,6 +44,15 @@ app = FastAPI(
     docs_url=f"{settings.api_v1_prefix}/docs",
     redoc_url=f"{settings.api_v1_prefix}/redoc",
     lifespan=lifespan,
+)
+
+# CORS Middleware for Mobile/Web access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
