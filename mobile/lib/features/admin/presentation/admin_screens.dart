@@ -357,8 +357,20 @@ class AdminEventsScreen extends ConsumerWidget {
                   title: Text("Starts: ${startDate.toLocal().toString().split(' ')[0]}"),
                   trailing: const Icon(Icons.calendar_month),
                   onTap: () async {
-                    final date = await showDatePicker(context: ctx, initialDate: startDate, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
-                    if (date != null) setDialogState(() => startDate = date);
+                    final date = await showDatePicker(
+                      context: ctx,
+                      initialDate: startDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null) {
+                      setDialogState(() {
+                        startDate = date;
+                        if (endDate.isBefore(startDate)) {
+                          endDate = startDate.add(const Duration(hours: 2));
+                        }
+                      });
+                    }
                   },
                 ),
                 ListTile(
@@ -366,7 +378,14 @@ class AdminEventsScreen extends ConsumerWidget {
                   title: Text("Ends: ${endDate.toLocal().toString().split(' ')[0]}"),
                   trailing: const Icon(Icons.calendar_month),
                   onTap: () async {
-                    final date = await showDatePicker(context: ctx, initialDate: endDate, firstDate: startDate, lastDate: DateTime.now().add(const Duration(days: 365)));
+                    // Fix: Reset endDate to startDate if it's before to avoid crash
+                    DateTime pickerInitialDate = endDate.isBefore(startDate) ? startDate : endDate;
+                    final date = await showDatePicker(
+                      context: ctx,
+                      initialDate: pickerInitialDate,
+                      firstDate: startDate,
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
                     if (date != null) setDialogState(() => endDate = date);
                   },
                 ),
@@ -553,8 +572,16 @@ class AdminEventsScreen extends ConsumerWidget {
                   if (!ctx.mounted) return;
                   Navigator.pop(ctx);
                 } catch (e) {
-                  if (!ctx.mounted) return;
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+                  if (ctx.mounted) {
+                    String msg = e.toString();
+                    if (e is DioException && e.response?.data != null) {
+                      msg = "Validation Error: ${e.response?.data}";
+                    }
+                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                      content: Text("Failed to create event: $msg"),
+                      duration: const Duration(seconds: 10),
+                    ));
+                  }
                 }
               },
               child: const Text("Create Event (Draft)"),

@@ -2,10 +2,11 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class EventCategoryCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     name: str
     category_type: Optional[str] = None
     skate_type: Optional[str] = None
@@ -15,9 +16,13 @@ class EventCategoryCreate(BaseModel):
     gender_restriction: Optional[str] = None
     max_slots: int = 0
     price: float = 0
+    images_url: Optional[list[str]] = None
+    other_urls: Optional[dict[str, str]] = None
+    city: Optional[str] = None
 
 
 class EventCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     title: str
     description: Optional[str] = None
     organizer_email: Optional[str] = None
@@ -29,6 +34,11 @@ class EventCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     banner_image_url: Optional[str] = None
+    images_url: Optional[list[str]] = None
+    other_urls: Optional[dict[str, str]] = None
+    city: Optional[str] = None
+    categories: list[EventCategoryCreate] = []
+
     categories: list[EventCategoryCreate] = []
 
 
@@ -43,6 +53,9 @@ class EventUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     banner_image_url: Optional[str] = None
+    images_url: Optional[list[str]] = None
+    other_urls: Optional[dict[str, str]] = None
+    city: Optional[str] = None
     status: Optional[str] = None
 
 
@@ -61,6 +74,9 @@ class EventOut(BaseModel):
     latitude: Optional[float]
     longitude: Optional[float]
     banner_image_url: Optional[str]
+    images_url: Optional[list[str]]
+    other_urls: Optional[dict[str, str]]
+    city: Optional[str]
     status: str
 
 
@@ -84,6 +100,9 @@ class EventCategoryOut(BaseModel):
     gender_restriction: Optional[str]
     max_slots: int
     price: float
+    images_url: Optional[list[str]]
+    other_urls: Optional[dict[str, str]]
+    city: Optional[str]
 
 
 class EventRegistrationCreate(BaseModel):

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, UniqueConstraint, JSON
 from sqlmodel import Field, SQLModel
 
 from app.models.enums import EventStatus, RegistrationStatus
@@ -26,6 +26,10 @@ class Event(SQLModel, table=True):
     longitude: Optional[float] = Field(default=None)
 
     banner_image_url: Optional[str] = Field(default=None, max_length=500)
+    images_url: Optional[list[str]] = Field(default=None, sa_column=Column(JSON))
+    other_urls: Optional[dict[str, str]] = Field(default=None, sa_column=Column(JSON))
+    city: Optional[str] = Field(default=None, max_length=100)
+    
     price: float = Field(default=0, sa_column=Column(Numeric(10, 2), nullable=False))
     status: str = Field(default="draft", sa_column=Column(String(20), nullable=False, server_default="draft"))
 
@@ -57,6 +61,10 @@ class EventCategory(SQLModel, table=True):
     gender_restriction: Optional[str] = Field(default=None, max_length=30)
     max_slots: int = Field(default=0)
     price: float = Field(default=0, sa_column=Column(Numeric(10, 2), nullable=False))
+    
+    images_url: Optional[list[str]] = Field(default=None, sa_column=Column(JSON))
+    other_urls: Optional[dict[str, str]] = Field(default=None, sa_column=Column(JSON))
+    city: Optional[str] = Field(default=None, max_length=100)
 
 
 class EventRegistration(SQLModel, table=True):

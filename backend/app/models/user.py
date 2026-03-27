@@ -37,10 +37,8 @@ class User(SQLModel, table=True):
 
     country: Optional[str] = Field(default=None, max_length=100)
     state: Optional[str] = Field(default=None, max_length=100)
-    city: Optional[str] = Field(default=None, max_length=100)
-    address: Optional[str] = Field(default=None)
-
     profile_picture_url: Optional[str] = Field(default=None, max_length=500)
+    city: Optional[str] = Field(default=None, max_length=100)
     favorite_sport: Optional[str] = Field(default="skating", max_length=50)
 
     is_active: bool = Field(default=True)
@@ -92,6 +90,7 @@ class OrganizerProfile(SQLModel, table=True):
     org_name: str = Field(sa_column=Column(String(120), nullable=False))
     website_url: Optional[str] = Field(default=None, max_length=255)
     is_verified_org: bool = Field(default=False)
+    city: Optional[str] = Field(default=None, max_length=100)
 
 
 class SkaterProfile(SQLModel, table=True):

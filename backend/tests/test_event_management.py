@@ -118,7 +118,7 @@ def test_event_cascade_delete(client, session, admin_user, sample_event, sample_
         category_id=sample_category.id,
         user_id=admin_user.id,
         rank=1,
-        timing="00:45.00"
+        timing_ms=45000
     )
     session.add(res)
     session.commit()

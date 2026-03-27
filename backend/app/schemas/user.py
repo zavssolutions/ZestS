@@ -21,6 +21,7 @@ class UserProfileOut(BaseModel):
     favorite_sport: Optional[str]
     profile_picture_url: Optional[str]
     has_completed_profile: bool
+    city: Optional[str] = None
     skate_type: Optional[str] = None
     age_group: Optional[str] = None
 
@@ -33,6 +34,7 @@ class UserProfileUpsert(BaseModel):
     email: Optional[str] = None
     dob: Optional[date] = None
     favorite_sport: Sport = Sport.SKATING
+    city: Optional[str] = None
     
     # Trainer
     school_name: Optional[str] = None

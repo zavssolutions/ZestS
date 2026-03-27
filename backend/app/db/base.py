@@ -50,13 +50,36 @@ def _patch_schema(engine) -> None:
                 conn.commit()
                 logger.info("Patched: added event_categories.category_type")
 
-            # 5. organizer_profiles.organizer_id — add if missing
+            # 5. organizer_profiles.organizer_id & city — add if missing
             if _col_type("organizer_profiles", "organizer_id") is None:
                 conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN organizer_id SERIAL"))
                 conn.commit()
                 logger.info("Patched: added organizer_profiles.organizer_id")
+            if _col_type("organizer_profiles", "city") is None:
+                conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN city VARCHAR(100)"))
+                conn.commit()
+                logger.info("Patched: added organizer_profiles.city")
 
-            # 6. Convert native PG enum columns to VARCHAR (one-time)
+            # 6. users.city — add if missing
+            if _col_type("users", "city") is None:
+                conn.execute(text("ALTER TABLE users ADD COLUMN city VARCHAR(100)"))
+                conn.commit()
+                logger.info("Patched: added users.city")
+
+            # 7. Add images_url, other_urls, and city to events and event_categories
+            for tbl in ["events", "event_categories"]:
+                if _col_type(tbl, "images_url") is None:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN images_url JSONB"))
+                    logger.info(f"Patched: added {tbl}.images_url")
+                if _col_type(tbl, "other_urls") is None:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN other_urls JSONB"))
+                    logger.info(f"Patched: added {tbl}.other_urls")
+                if _col_type(tbl, "city") is None:
+                    conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN city VARCHAR(100)"))
+                    logger.info(f"Patched: added {tbl}.city")
+                conn.commit()
+
+            # 9. Convert native PG enum columns to VARCHAR (one-time)
             enum_cols = [
                 ("users", "role"),
                 ("users", "sport"),

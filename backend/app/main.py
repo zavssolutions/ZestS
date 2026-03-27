@@ -1,8 +1,12 @@
+import logging
+import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.router import api_router
@@ -11,21 +15,7 @@ from app.core.logging import configure_logging
 from app.db.base import create_db_and_tables
 from app.db.session import engine
 
-import time
-import logging
 logger = logging.getLogger(__name__)
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = (time.time() - start_time) * 1000
-    formatted_process_time = "{0:.2f}".format(process_time)
-    logger.info(
-        f"DEBUG_REQUEST: {request.method} {request.url.path} - "
-        f"Completed in {formatted_process_time}ms - Status: {response.status_code}"
-    )
-    return response
 
 settings = get_settings()
 configure_logging()
@@ -46,36 +36,63 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware for Mobile/Web access
+# ── Middleware ────────────────────────────────────────────────────────────
+
+# CORS – allow_credentials=True requires explicit origins, NOT ["*"].
+# Using ["*"] with credentials is rejected by browsers.
+# For mobile (Dio), credentials flag is irrelevant, so we keep it simple.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    elapsed_ms = (time.time() - start) * 1000
+    logger.info(
+        "REQUEST %s %s -> %s (%.0fms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+    return response
+
+
+# ── Exception handler ────────────────────────────────────────────────────
+
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled exception on {request.url.path}")
     return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "Something went wrong. Please try again.",
-            "error": type(exc).__name__,
-        },
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "An internal error has occurred"},
     )
 
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error(f"Validation error on {request.url.path}: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors(), "body": exc.body},
+    )
+
+
+# ── Health check ─────────────────────────────────────────────────────────
 
 @app.get("/healthz", tags=["system"])
 def healthz() -> dict:
     return {"status": "ok"}
 
 
-import os
-from pathlib import Path
+# ── Static files & routes ────────────────────────────────────────────────
 
-# Ensure static directories exist before mounting
 static_dir = Path("static")
 static_dir.mkdir(exist_ok=True)
 (static_dir / "uploads").mkdir(exist_ok=True)

@@ -3,6 +3,8 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep, require_roles
@@ -75,6 +77,13 @@ def create_event(
     data = payload.model_dump()
     categories_data = data.pop("categories", [])
     organizer_email = data.pop("organizer_email", None)
+
+    # 0. Manual date validation
+    if payload.end_at_utc <= payload.start_at_utc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"End date ({payload.end_at_utc}) must be strictly after start date ({payload.start_at_utc})"
+        )
     
     # Default to current user's organizer profile if they are an organizer
     target_organizer_id = None
@@ -151,13 +160,41 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
         if kid is None or kid.parent_id != current_user.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid kid profile")
 
+    # 1. Check Event Status
+    event = session.get(Event, payload.event_id)
+    if not event:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    if event.status != "published":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Can only register for published events")
+
+    # 2. Check Category Capacity
+    category = session.get(EventCategory, payload.category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    
+    if category.max_slots > 0:
+        reg_count = session.exec(
+            select(func.count(EventRegistration.id))
+            .where(EventRegistration.category_id == category.id)
+            .where(EventRegistration.status != "cancelled")
+        ).one()
+        if reg_count >= category.max_slots:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This category is full")
+
     registration = EventRegistration(
         event_id=payload.event_id,
         category_id=payload.category_id,
         user_id=user_id,
     )
     session.add(registration)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already registered for this category",
+        )
     return {"status": "ok", "registration_id": str(registration.id)}
 
 
