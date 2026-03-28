@@ -4,7 +4,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 from sqlmodel import func, select
 
 from app.api.deps import SessionDep, require_roles
@@ -114,6 +114,36 @@ def dashboard_stats(
             "users_delta": users_today - users_yesterday,
         },
     }
+
+
+@router.get("/debug/db-dump")
+def get_db_dump(
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    """Diagnostic endpoint to dump first 50 rows of all tables."""
+    from sqlmodel import SQLModel
+    dump = {}
+    for table_name, table in SQLModel.metadata.tables.items():
+        try:
+            # We use raw SQL to avoid needing to import every model class here
+            result = session.exec(text(f'SELECT * FROM "{table_name}" LIMIT 50')).fetchall()
+            # Convert rows to dicts
+            rows = [dict(row._mapping) for row in result]
+            # Convert UUIDs and datetimes to strings for JSON
+            for row in rows:
+                for k, v in row.items():
+                    if isinstance(v, (UUID, datetime)):
+                        row[k] = str(v)
+            dump[table_name] = {
+                "count": len(rows),
+                "rows": rows
+            }
+        except Exception as e:
+            dump[table_name] = {"error": str(e)}
+    
+    _log_action(session, current_user.id, "debug_db_dump", "system", None)
+    return dump
 
 
 @router.put("/log-level/{level}")

@@ -3,6 +3,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:image_picker/image_picker.dart";
 import "package:dio/dio.dart";
 import "package:go_router/go_router.dart";
+import "admin_debug_screen.dart";
 
 import "../../../core/api_client.dart";
 import "../../events/data/events_repository.dart";
@@ -101,6 +102,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           _navTile(context, Icons.emoji_events, "Event Results", "/admin/results"),
           _navTile(context, Icons.support_agent, "User Issues", "/admin/issues"),
           _navTile(context, Icons.receipt_long, "Logs", "/admin/logs"),
+          _navTile(context, Icons.bug_report, "Debug: DB Dump", "/admin/debug"),
           _navTile(context, Icons.article, "Misc (Pages)", "/admin/misc"),
           const SizedBox(height: 24),
           FilledButton.icon(
@@ -179,6 +181,8 @@ class AdminDashboardScreen extends ConsumerWidget {
         return const AdminIssuesScreen();
       case "/admin/logs":
         return const AdminLogsScreen();
+      case "/admin/debug":
+        return const AdminDebugScreen();
       case "/admin/misc":
         return const AdminMiscScreen();
       default:
