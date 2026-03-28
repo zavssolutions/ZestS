@@ -123,9 +123,65 @@ class AdminDashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.notification_add),
             label: const Text("Send Test Notification to All"),
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _populateMassiveData(context, ref),
+            icon: const Icon(Icons.data_thresholding),
+            label: const Text("Populate 10x10 Massive Data"),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.orange),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _populateMassiveData(BuildContext context, WidgetRef ref) async {
+    final dio = ref.read(dioProvider);
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      for (int i = 1; i <= 10; i++) {
+        final categories = <Map<String, dynamic>>[];
+        for (int j = 1; j <= 10; j++) {
+          categories.add({
+            "name": "Massive Cat $j (Event $i)",
+            "price": 10.0 * j,
+            "category_type": "Road",
+            "skate_type": "Inline",
+            "age_group": "Under 15",
+            "distance": "${j}km",
+          });
+        }
+
+        await dio.post("/events", data: {
+          "title": "AVD Massive Event $i",
+          "description": "Populated via AVD script",
+          "organizer_email": "sivakumar.perumalla.lld01@gmail.com",
+          "price": 0.0,
+          "location_name": "AVD Stadium",
+          "venue_city": "AVD City",
+          "start_at_utc": DateTime.now().add(Duration(days: 30 + i)).toUtc().toIso8601String(),
+          "end_at_utc": DateTime.now().add(Duration(days: 30 + i, hours: 2)).toUtc().toIso8601String(),
+          "categories": categories,
+        });
+      }
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Successfully created 10 events with 10 categories each! (Total 100 entries)")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
   }
 
   Widget _statCard(String label, String value, dynamic delta) {

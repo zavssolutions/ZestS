@@ -79,10 +79,10 @@ def create_event(
     organizer_email = data.pop("organizer_email", None)
 
     # 0. Manual date validation
-    if payload.end_at_utc <= payload.start_at_utc:
+    if payload.end_at_utc < payload.start_at_utc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"End date ({payload.end_at_utc}) must be strictly after start date ({payload.start_at_utc})"
+            detail=f"End date ({payload.end_at_utc}) must be on or after start date ({payload.start_at_utc})"
         )
     
     # Default to current user's organizer profile if they are an organizer
@@ -93,16 +93,19 @@ def create_event(
         profile = session.get(OrganizerProfile, u_id)
         return profile.organizer_id if profile else None
 
+    target_organizer_user_id = current_user.id
     if organizer_email:
         organizer_user = session.exec(select(User).where(User.email == organizer_email)).first()
         if organizer_user:
             target_organizer_id = get_org_id(organizer_user.id)
+            target_organizer_user_id = organizer_user.id
     
     if target_organizer_id is None:
         # Fallback to current user if they are organizer
         target_organizer_id = get_org_id(current_user.id)
+        # target_organizer_user_id remains current_user.id
 
-    event = Event(**data, organizer_id=target_organizer_id)
+    event = Event(**data, organizer_id=target_organizer_id, organizer_user_id=target_organizer_user_id)
     session.add(event)
     session.commit()
     session.refresh(event)

@@ -13,6 +13,7 @@ class Event(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     organizer_id: Optional[int] = Field(default=None, foreign_key="organizer_profiles.organizer_id")
+    organizer_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
 
     title: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
