@@ -14,6 +14,8 @@ final cachedProfileProvider = FutureProvider<ProfileModel?>((ref) async {
 });
 
 final kidsProvider = FutureProvider<List<ProfileModel>>((ref) async {
+  final profile = ref.watch(cachedProfileProvider).valueOrNull;
+  if (profile == null || profile.role != "parent") return [];
   return ref.watch(profileRepositoryProvider).fetchKids();
 });
 

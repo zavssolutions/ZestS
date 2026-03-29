@@ -17,6 +17,7 @@ import "banner_view_screen.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
 import "../../../features/admin/presentation/admin_screens.dart";
+import "../../../core/constants.dart";
 
 enum _HomeTab { dashboard, search, schedule, home }
 
@@ -207,15 +208,15 @@ class _HomePage extends ConsumerWidget {
     final bannerWidget = bannersAsync.when(
       data: (banners) {
         final banner = banners.isNotEmpty ? banners.first : null;
-        final imageUrl = banner?.imageUrl ?? "assets/images/zests_logo.png";
-        final isAsset = imageUrl.startsWith("assets/");
+        final bannerUrl = banner?.imageUrl ?? "assets/images/zests_logo.png";
+        final isAsset = bannerUrl.startsWith("assets/");
 
         final shareText = banner != null
             ? [
                 if ((banner.title ?? "").trim().isNotEmpty) banner.title!.trim(),
                 if ((banner.linkUrl ?? "").trim().isNotEmpty) banner.linkUrl!.trim(),
-                imageUrl.trim(),
-              ].join("\n")
+                bannerUrl.trim(),
+            ].join("\n")
             : "Check out ZestS!";
 
         return InkWell(
@@ -225,7 +226,7 @@ class _HomePage extends ConsumerWidget {
               "/banner",
               extra: BannerViewArgs(
                 title: banner?.title?.trim().isNotEmpty == true ? banner!.title!.trim() : "ZestS",
-                image: imageUrl,
+                image: isAsset ? bannerUrl : imageUrl(bannerUrl),
                 isAsset: isAsset,
                 deepLinkUrl: banner?.shareUrl ?? "https://zests.app.link/home",
                 shareText: shareText,
@@ -237,9 +238,9 @@ class _HomePage extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: isAsset
-                    ? Image.asset(imageUrl, height: 130, width: double.infinity, fit: BoxFit.contain)
+                    ? Image.asset(bannerUrl, height: 130, width: double.infinity, fit: BoxFit.contain)
                     : CachedNetworkImage(
-                        imageUrl: imageUrl,
+                        imageUrl: imageUrl(bannerUrl),
                         height: 130,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -381,8 +382,19 @@ class _HomePage extends ConsumerWidget {
                     final e = displayedEvents[index];
                     return Card(
                       child: ListTile(
-                        leading: e.bannerImageUrl != null
-                            ? CachedNetworkImage(imageUrl: e.bannerImageUrl!, width: 54, fit: BoxFit.cover)
+                        leading: e.bannerImageUrl != null && e.bannerImageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl(e.bannerImageUrl),
+                                width: 54,
+                                height: 54,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => Image.asset(
+                                  "assets/images/zests_logo.png",
+                                  width: 54,
+                                  height: 54,
+                                  fit: BoxFit.contain,
+                                ),
+                              )
                             : const Icon(Icons.event),
                         title: Text(e.title),
                         subtitle: Text(

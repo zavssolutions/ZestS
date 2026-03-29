@@ -10,6 +10,7 @@ import "../data/event_model.dart";
 import "../data/events_repository.dart";
 import "../../profile/data/profile_providers.dart";
 import "../../profile/data/profile_model.dart";
+import "../../../core/constants.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({required this.eventId, super.key});
@@ -77,12 +78,18 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: CachedNetworkImage(
-                    imageUrl: eventData.bannerImageUrl!,
+                    imageUrl: imageUrl(eventData.bannerImageUrl),
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(color: Colors.grey[200], child: const Center(child: CircularProgressIndicator())),
-                    errorWidget: (context, url, error) => Container(color: Colors.grey[200], child: const Icon(Icons.broken_image, size: 50)),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[200],
+                      child: Image.asset(
+                        "assets/images/zests_logo.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
               const SizedBox(height: 16),
@@ -132,7 +139,6 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         if (categories.isEmpty) {
           return const Text("No categories available for registration yet.");
         }
-        _selectedCategoryId ??= categories.first.id;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

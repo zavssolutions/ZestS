@@ -3,6 +3,7 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "../data/profile_providers.dart";
+import "../../../core/constants.dart";
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -22,8 +23,8 @@ class ProfileScreen extends ConsumerWidget {
             children: [
               CircleAvatar(
                 radius: 36,
-                backgroundImage: profile.profilePictureUrl != null
-                    ? CachedNetworkImageProvider(profile.profilePictureUrl!)
+                 backgroundImage: profile.profilePictureUrl != null && profile.profilePictureUrl!.isNotEmpty
+                    ? CachedNetworkImageProvider(imageUrl(profile.profilePictureUrl))
                     : null,
                 child: profile.profilePictureUrl == null ? const Icon(Icons.person) : null,
               ),

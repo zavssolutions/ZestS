@@ -166,6 +166,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           "venue_city": "AVD City",
           "start_at_utc": DateTime.now().add(Duration(days: 30 + i)).toUtc().toIso8601String(),
           "end_at_utc": DateTime.now().add(Duration(days: 30 + i, hours: 2)).toUtc().toIso8601String(),
+          "banner_image_url": "https://picsum.photos/seed/${i + 100}/800/400",
           "categories": categories,
         });
       }

@@ -10,3 +10,10 @@ const kTermsPageUrl = String.fromEnvironment(
 
 const kProfileCacheKey = "cached_profile";
 const kFirstOpenKey = "is_first_open";
+
+String imageUrl(String? path) {
+  if (path == null || path.isEmpty) return "";
+  if (path.startsWith("http")) return path;
+  final base = kApiBaseUrl.replaceAll("/api/v1", "");
+  return "$base$path";
+}
