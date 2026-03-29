@@ -1,4 +1,4 @@
-﻿import "package:dio/dio.dart";
+import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 
@@ -66,6 +66,21 @@ class EventsRepository {
       data: {
         "event_id": eventId,
         "category_id": categoryId,
+        "user_id": userId,
+      },
+    );
+  }
+
+  Future<void> registerForMultipleCategories({
+    required String eventId,
+    required List<String> categoryIds,
+    String? userId,
+  }) async {
+    await _dio.post(
+      "/events/registrations/bulk",
+      data: {
+        "event_id": eventId,
+        "category_ids": categoryIds,
         "user_id": userId,
       },
     );

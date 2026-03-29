@@ -39,8 +39,6 @@ class EventCreate(BaseModel):
     city: Optional[str] = None
     categories: list[EventCategoryCreate] = []
 
-    categories: list[EventCategoryCreate] = []
-
 
 class EventUpdate(BaseModel):
     title: Optional[str] = None
@@ -108,6 +106,12 @@ class EventCategoryOut(BaseModel):
 class EventRegistrationCreate(BaseModel):
     event_id: UUID
     category_id: UUID
+    user_id: Optional[UUID] = None
+
+
+class EventRegistrationBulkCreate(BaseModel):
+    event_id: UUID
+    category_ids: list[UUID]
     user_id: Optional[UUID] = None
 
 

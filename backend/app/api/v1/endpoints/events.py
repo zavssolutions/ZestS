@@ -16,6 +16,7 @@ from app.schemas.event import (
     EventCategoryCreate,
     EventCategoryOut,
     EventOut,
+    EventRegistrationBulkCreate,
     EventRegistrationCreate,
     EventStatusUpdate,
     ReferralAction,
@@ -201,7 +202,69 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
             status_code=status.HTTP_409_CONFLICT,
             detail="User is already registered for this category",
         )
-    return {"status": "ok", "registration_id": str(registration.id)}
+    return {"message": "Registration successful", "registration_id": str(registration.id)}
+
+
+@router.post("/registrations/bulk", response_model=dict)
+def register_event_bulk(payload: EventRegistrationBulkCreate, current_user: CurrentUser, session: SessionDep) -> dict:
+    if current_user.role == UserRole.KID and current_user.parent_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Kid profiles cannot login directly")
+
+    user_id = payload.user_id or current_user.id
+    if payload.user_id and current_user.role != UserRole.PARENT:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only parents can register a kid")
+    
+    if payload.user_id and current_user.role == UserRole.PARENT:
+        kid = session.get(User, payload.user_id)
+        if kid is None or kid.parent_id != current_user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid kid profile")
+
+    # 1. Check Event Status
+    event = session.get(Event, payload.event_id)
+    if not event:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    if event.status != "published":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Can only register for published events")
+
+    registrations = []
+    for category_id in payload.category_ids:
+        # 2. Check Category Capacity
+        category = session.get(EventCategory, category_id)
+        if not category:
+            continue # skip invalid categories
+        
+        if category.event_id != event.id:
+            continue # skip if category doesn't belong to event
+
+        if category.max_slots > 0:
+            reg_count = session.exec(
+                select(func.count(EventRegistration.id))
+                .where(EventRegistration.category_id == category.id)
+                .where(EventRegistration.status != "cancelled")
+            ).one()
+            if reg_count >= category.max_slots:
+                continue # skip full categories
+
+        # Double registration check
+        existing = session.exec(
+            select(EventRegistration)
+            .where(EventRegistration.category_id == category.id)
+            .where(EventRegistration.user_id == user_id)
+            .where(EventRegistration.status != "cancelled")
+        ).first()
+        if existing:
+            continue
+
+        registration = EventRegistration(
+            event_id=payload.event_id,
+            category_id=category_id,
+            user_id=user_id,
+        )
+        session.add(registration)
+        registrations.append(registration)
+
+    session.commit()
+    return {"message": f"Successfully registered for {len(registrations)} categories", "count": len(registrations)}
 
 
 @router.get("/registrations/me", response_model=list[dict])

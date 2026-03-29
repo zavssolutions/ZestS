@@ -21,7 +21,7 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
-  String? _selectedCategoryId;
+  final Set<String> _selectedCategoryIds = {};
   String? _selectedUserId;
 
   @override
@@ -73,10 +73,17 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              if (eventData.bannerImageUrl != null)
+              if (eventData.bannerImageUrl != null && eventData.bannerImageUrl!.isNotEmpty)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(imageUrl: eventData.bannerImageUrl!, height: 180, fit: BoxFit.cover),
+                  child: CachedNetworkImage(
+                    imageUrl: eventData.bannerImageUrl!,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.grey[200], child: const Center(child: CircularProgressIndicator())),
+                    errorWidget: (context, url, error) => Container(color: Colors.grey[200], child: const Icon(Icons.broken_image, size: 50)),
+                  ),
                 ),
               const SizedBox(height: 16),
               Text(eventData.title, style: Theme.of(context).textTheme.headlineSmall),
@@ -130,21 +137,28 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Register"),
+            const Text("Select Categories", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _selectedCategoryId,
-              items: categories
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c.id,
-                      child: Text("${c.name} (₹${c.price.toStringAsFixed(0)})"),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _selectedCategoryId = value),
-              decoration: const InputDecoration(labelText: "Category"),
-            ),
+            ...categories.map((c) {
+              final isSelected = _selectedCategoryIds.contains(c.id);
+              return CheckboxListTile(
+                title: Text(c.name),
+                subtitle: Text("Price: ₹${c.price.toStringAsFixed(0)}"),
+                value: isSelected,
+                onChanged: (bool? value) {
+                  setState(() {
+                    if (value == true) {
+                      _selectedCategoryIds.add(c.id);
+                    } else {
+                      _selectedCategoryIds.remove(c.id);
+                    }
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                dense: true,
+              );
+            }).toList(),
             const SizedBox(height: 8),
             profileAsync.when(
               data: (profile) {
@@ -185,7 +199,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               data: (profile) {
                 final isLoggedIn = profile != null;
                 final needsProfileCompletion = profile != null && !profile.hasCompletedProfile;
-                final enabled = _selectedCategoryId != null && isLoggedIn && !needsProfileCompletion;
+                final enabled = _selectedCategoryIds.isNotEmpty && isLoggedIn && !needsProfileCompletion;
                 return FilledButton(
                   onPressed: !enabled
                       ? () {
@@ -197,18 +211,26 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             context.push("/profile-complete");
                             return;
                           }
+                          if (_selectedCategoryIds.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Please select at least one category")),
+                            );
+                            return;
+                          }
                         }
                       : () async {
                           try {
-                            await ref.read(eventsRepositoryProvider).registerForEvent(
+                            await ref.read(eventsRepositoryProvider).registerForMultipleCategories(
                                   eventId: widget.eventId,
-                                  categoryId: _selectedCategoryId!,
+                                  categoryIds: _selectedCategoryIds.toList(),
                                   userId: _selectedUserId,
                                 );
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text("Registration submitted")),
+                                const SnackBar(content: Text("Registration submitted successfuly!")),
                               );
+                              // Optional: clear selection after success
+                              setState(() => _selectedCategoryIds.clear());
                             }
                           } catch (e) {
                             if (mounted) {
