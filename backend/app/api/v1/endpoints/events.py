@@ -111,6 +111,9 @@ def create_event(
     session.refresh(event)
     
     for cat_data in categories_data:
+        # Copy event price to category if event price is set
+        if event.price > 0:
+            cat_data["price"] = event.price
         category = EventCategory(**cat_data, event_id=event.id)
         session.add(category)
     

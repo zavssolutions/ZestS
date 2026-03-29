@@ -410,7 +410,19 @@ class AdminEventsScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 const Text("Common Details", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyan)),
                 TextField(controller: organizerCtrl, decoration: const InputDecoration(labelText: "Organizer Email")),
-                TextField(controller: priceCtrl, decoration: const InputDecoration(labelText: "Base Price (₹)"), keyboardType: TextInputType.number),
+                TextField(
+                  controller: priceCtrl, 
+                  decoration: const InputDecoration(labelText: "Base Price (₹)"), 
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) {
+                    final p = double.tryParse(v) ?? 0.0;
+                    setDialogState(() {
+                      for (var cat in categories) {
+                        cat["price"] = p;
+                      }
+                    });
+                  },
+                ),
                 
                 ListTile(
                   contentPadding: EdgeInsets.zero,
