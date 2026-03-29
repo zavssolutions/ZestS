@@ -1,4 +1,4 @@
-﻿# ZestS Backend
+# ZestS Backend
 
 ## Run local
 
@@ -15,6 +15,13 @@ uvicorn app.main:app --reload
 ```bash
 celery -A app.workers.celery_app.celery_app worker --loglevel=INFO
 ```
+
+## Skating Schemas
+
+- **Category (Skate Type)**: Inline, Quad, Toy inline, tenacity.
+- **Preferred Tracks**: Road, Rink, Ice, Artistic.
+- **Skill Level**: 1 to 10 (Enum).
+- **Age Groups**: 4-6, 6-8, ..., above 15.
 
 ## Security
 

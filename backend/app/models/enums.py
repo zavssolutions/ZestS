@@ -45,14 +45,14 @@ class PaymentStatus(StrEnum):
 class CategoryType(StrEnum):
     ROAD = "Road"
     RINK = "Rink"
-    ICE = "ICE"
+    ICE = "Ice"
     ARTISTIC = "Artistic"
 
 
 class SkateType(StrEnum):
     INLINE = "Inline"
     QUAD = "Quad"
-    TOY_INLINE = "toy inline"
+    TOY_INLINE = "Toy inline"
     TENACITY = "tenacity"
 
 

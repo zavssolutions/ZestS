@@ -40,6 +40,10 @@ class User(SQLModel, table=True):
     profile_picture_url: Optional[str] = Field(default=None, max_length=500)
     city: Optional[str] = Field(default=None, max_length=100)
     favorite_sport: Optional[str] = Field(default="skating", max_length=50)
+    
+    # Common for skaters/kids
+    skate_type: Optional[str] = Field(default=None, max_length=60)
+    age_group: Optional[str] = Field(default=None, max_length=60)
 
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=False)

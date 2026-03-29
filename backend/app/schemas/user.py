@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import Sport, UserRole
+from app.models.enums import Sport, UserRole, CategoryType, SkateType
 
 
 class UserProfileOut(BaseModel):
@@ -22,7 +22,7 @@ class UserProfileOut(BaseModel):
     profile_picture_url: Optional[str]
     has_completed_profile: bool
     city: Optional[str] = None
-    skate_type: Optional[str] = None
+    skate_type: Optional[SkateType] = None
     age_group: Optional[str] = None
 
 
@@ -49,8 +49,8 @@ class UserProfileUpsert(BaseModel):
     # Skater
     skill_level: Optional[str] = None
     years_skating: Optional[int] = None
-    preferred_tracks: Optional[str] = None
-    skate_type: Optional[str] = None
+    preferred_tracks: Optional[CategoryType] = None
+    skate_type: Optional[SkateType] = None
     age_group: Optional[str] = None
 
 
@@ -59,7 +59,7 @@ class KidCreate(BaseModel):
     last_name: Optional[str] = None
     dob: date
     gender: Optional[str] = "unspecified"
-    skate_type: Optional[str] = None
+    skate_type: Optional[SkateType] = None
     age_group: Optional[str] = None
 
 

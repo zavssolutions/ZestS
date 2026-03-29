@@ -27,9 +27,9 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
   final _websiteUrlController = TextEditingController();
   
   // Skater
-  final _skillLevelController = TextEditingController();
+  String? _skillLevel;
   final _yearsSkatingController = TextEditingController();
-  final _preferredTracksController = TextEditingController();
+  String? _preferredTracks;
   String? _skateType;
   String? _ageGroup;
   
@@ -41,7 +41,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
   String? _kidSkateType;
   String? _kidAgeGroup;
 
-  final _skateTypes = ["quad", "inline", "speed", "artistic"];
+  final _skateTypes = ["Inline", "Quad", "Toy inline", "tenacity"];
   final _ageGroups = [
     "under_5",
     "cadet(5-7)",
@@ -109,9 +109,9 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             experienceYears: _role == "trainer" ? int.tryParse(_experienceYearsController.text.trim()) : null,
             orgName: _role == "organizer" ? _orgNameController.text.trim() : null,
             websiteUrl: _role == "organizer" ? _websiteUrlController.text.trim() : null,
-            skillLevel: _role == "skater" ? _skillLevelController.text.trim() : null,
+            skillLevel: _role == "skater" ? _skillLevel : null,
             yearsSkating: _role == "skater" ? int.tryParse(_yearsSkatingController.text.trim()) : null,
-            preferredTracks: _role == "skater" ? _preferredTracksController.text.trim() : null,
+            preferredTracks: _role == "skater" ? _preferredTracks : null,
             skateType: _role == "skater" ? _skateType : null,
             ageGroup: _role == "skater" ? _ageGroup : null,
           );
@@ -267,11 +267,21 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             
             if (_role == "skater") ...[
               const SizedBox(height: 12),
-              TextField(controller: _skillLevelController, decoration: const InputDecoration(labelText: "Skill Level")),
+              DropdownButtonFormField<String>(
+                value: _skillLevel,
+                decoration: const InputDecoration(labelText: "Skill Level (1-10)"),
+                items: List.generate(10, (i) => (i + 1).toString()).map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                onChanged: (val) => setState(() => _skillLevel = val),
+              ),
               const SizedBox(height: 12),
               TextField(controller: _yearsSkatingController, decoration: const InputDecoration(labelText: "Years Skating"), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
-              TextField(controller: _preferredTracksController, decoration: const InputDecoration(labelText: "Preferred Tracks")),
+              DropdownButtonFormField<String>(
+                value: _preferredTracks,
+                decoration: const InputDecoration(labelText: "Preferred Tracks"),
+                items: ["Road", "Rink", "Ice", "Artistic"].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                onChanged: (val) => setState(() => _preferredTracks = val),
+              ),
               const SizedBox(height: 12),
               TextField(controller: _schoolNameController, decoration: const InputDecoration(labelText: "School Name")),
               const SizedBox(height: 12),

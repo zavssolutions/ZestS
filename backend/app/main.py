@@ -9,11 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from sqlalchemy import text
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.base import create_db_and_tables
 from app.db.session import engine
+from alembic.config import Config
+from alembic import command
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +23,39 @@ settings = get_settings()
 configure_logging()
 
 
+def run_migrations():
+    try:
+        logger.info("Running raw SQL database fixes...")
+        with engine.begin() as conn:
+            # Fix users table
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
+            
+            # Fix skater_profiles
+            conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
+            conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
+            
+            # Fix organizer_profiles
+            conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN IF NOT EXISTS organizer_id SERIAL UNIQUE"))
+            conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
+            
+            # Fix events
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer_id INTEGER"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0"))
+            
+            # Fix event_categories
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(60)"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS images_url JSONB"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS other_urls JSONB"))
+            
+        logger.info("Raw SQL fixes completed successfully.")
+    except Exception as e:
+        logger.error(f"Error running raw SQL fixes: {e}")
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    create_db_and_tables(engine)
+    run_migrations()
     yield
 
 

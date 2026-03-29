@@ -381,7 +381,7 @@ class AdminEventsScreen extends ConsumerWidget {
     bool uploading = false;
     final categories = <Map<String, dynamic>>[
       {
-        "name": "General",
+        "name": "Road Inline 500m 8-10",
         "price": 0.0,
         "category_type": "Road",
         "skate_type": "Inline",
@@ -522,7 +522,7 @@ class AdminEventsScreen extends ConsumerWidget {
                       onPressed: () {
                         setDialogState(() {
                           categories.add({
-                            "name": "", 
+                            "name": "Road Inline 500m 8-10", 
                             "price": double.tryParse(priceCtrl.text) ?? 0.0,
                             "category_type": "Road",
                             "skate_type": "Inline",
@@ -547,10 +547,9 @@ class AdminEventsScreen extends ConsumerWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: TextField(
-                                  decoration: const InputDecoration(labelText: "Category Name (e.g. Speed 500m)"),
-                                  onChanged: (v) => cat["name"] = v,
-                                  controller: TextEditingController(text: cat["name"])..selection = TextSelection.collapsed(offset: cat["name"].length),
+                                child: Text(
+                                  cat["name"].isEmpty ? "New Category" : cat["name"],
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
                                 ),
                               ),
                               IconButton(
@@ -570,7 +569,10 @@ class AdminEventsScreen extends ConsumerWidget {
                                 child: DropdownButtonFormField<String>(
                                   value: cat["category_type"],
                                   items: categoryTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() => cat["category_type"] = v),
+                                  onChanged: (v) => setDialogState(() {
+                                    cat["category_type"] = v;
+                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
+                                  }),
                                   decoration: const InputDecoration(labelText: "Cat Type"),
                                 ),
                               ),
@@ -579,7 +581,10 @@ class AdminEventsScreen extends ConsumerWidget {
                                 child: DropdownButtonFormField<String>(
                                   value: cat["skate_type"],
                                   items: skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() => cat["skate_type"] = v),
+                                  onChanged: (v) => setDialogState(() {
+                                    cat["skate_type"] = v;
+                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
+                                  }),
                                   decoration: const InputDecoration(labelText: "Skate"),
                                 ),
                               ),
@@ -592,7 +597,10 @@ class AdminEventsScreen extends ConsumerWidget {
                                 child: DropdownButtonFormField<String>(
                                   value: cat["distance"],
                                   items: distances.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() => cat["distance"] = v),
+                                  onChanged: (v) => setDialogState(() {
+                                    cat["distance"] = v;
+                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
+                                  }),
                                   decoration: const InputDecoration(labelText: "Distance"),
                                 ),
                               ),
@@ -601,7 +609,10 @@ class AdminEventsScreen extends ConsumerWidget {
                                 child: DropdownButtonFormField<String>(
                                   value: cat["age_group"],
                                   items: ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() => cat["age_group"] = v),
+                                  onChanged: (v) => setDialogState(() {
+                                    cat["age_group"] = v;
+                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
+                                  }),
                                   decoration: const InputDecoration(labelText: "Age"),
                                 ),
                               ),
