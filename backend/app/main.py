@@ -25,6 +25,11 @@ configure_logging()
 
 def run_migrations():
     try:
+        logger.info("Running automatic Alembic migrations...")
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations successful.")
+        
         logger.info("Running raw SQL database fixes...")
         with engine.begin() as conn:
             # Fix users table
