@@ -257,13 +257,16 @@ def delete_user(
         session.exec(update(User).where(User.parent_id == user_id).values(parent_id=None))
 
         # 2. Handle Organizers: Find organized events and delete them to avoid NotNullViolation 
-        # on organizer_user_id and RESTRICT violations from payments.
+        # on organizer_user_id and RESTRICT violations from payments and categories.
         stmt_event_ids = select(Event.id).where(Event.organizer_user_id == user_id)
         organized_event_ids = session.exec(stmt_event_ids).all()
         if organized_event_ids:
-            # Delete payments for these events first (RESTRICT)
+            # Delete dependents with RESTRICT or complex cascades first
             session.exec(delete(Payment).where(Payment.event_id.in_(organized_event_ids)))
-            # Delete events themselves (Cascades to registrations/results)
+            session.exec(delete(EventRegistration).where(EventRegistration.event_id.in_(organized_event_ids)))
+            session.exec(delete(EventResult).where(EventResult.event_id.in_(organized_event_ids)))
+            session.exec(delete(Referral).where(Referral.event_id.in_(organized_event_ids)))
+            # Delete events themselves (Cascades to EventCategory securely now)
             session.exec(delete(Event).where(Event.id.in_(organized_event_ids)))
         
         # 3. Delete user's own activity and identifiers

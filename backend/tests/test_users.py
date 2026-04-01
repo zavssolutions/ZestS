@@ -165,6 +165,21 @@ def test_admin_delete_organizer_with_events(client, admin_user, session):
     session.commit()
     session.refresh(event)
     
+    from app.models.event import EventCategory
+    category = EventCategory(event_id=event.id, name="Test Cat", max_slots=10, price=100.0)
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+
+    from app.models.event import EventRegistration
+    registration = EventRegistration(
+        event_id=event.id,
+        category_id=category.id,
+        user_id=admin_user.id
+    )
+    session.add(registration)
+    session.commit()
+    
     # Add a payment to trigger RESTRICT
     payment = Payment(
         user_id=admin_user.id, 
