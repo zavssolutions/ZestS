@@ -17,7 +17,7 @@ from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting, Sta
 from app.models.enums import UserRole
 from app.models.notification import Notification, DeviceToken
 from app.models.event import Event, EventRegistration, EventResult, Payment, Referral
-from app.models.user import User, OrganizerProfile, ParentChildMapping, ParentProfile, TrainerProfile, SkaterProfile
+from app.models.user import User, OrganizerProfile, ParentChildMapping, ParentProfile, TrainerProfile, SkaterProfile, DeletedUser
 from app.schemas.audit import AuditLogOut
 from app.schemas.content import (
     BannerCreate,
@@ -250,24 +250,24 @@ def delete_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     try:
+        # 1. Archive User to deleted_users table
+        archived_user = DeletedUser(
+            original_user_id=user.id,
+            role=user.role,
+            email=user.email,
+            first_name=user.first_name,
+            last_name=user.last_name
+        )
+        session.add(archived_user)
+
         # Programmatic cleanup for models we have imported
-        # 1. Nullify references (non-restrictive)
+        # 2. Nullify references (non-restrictive)
         session.exec(update(AuditLog).where(AuditLog.user_id == user_id).values(user_id=None))
         session.exec(update(SupportIssue).where(SupportIssue.user_id == user_id).values(user_id=None))
         session.exec(update(User).where(User.parent_id == user_id).values(parent_id=None))
-
-        # 2. Handle Organizers: Find organized events and delete them to avoid NotNullViolation 
-        # on organizer_user_id and RESTRICT violations from payments and categories.
-        stmt_event_ids = select(Event.id).where(Event.organizer_user_id == user_id)
-        organized_event_ids = session.exec(stmt_event_ids).all()
-        if organized_event_ids:
-            # Delete dependents with RESTRICT or complex cascades first
-            session.exec(delete(Payment).where(Payment.event_id.in_(organized_event_ids)))
-            session.exec(delete(EventRegistration).where(EventRegistration.event_id.in_(organized_event_ids)))
-            session.exec(delete(EventResult).where(EventResult.event_id.in_(organized_event_ids)))
-            session.exec(delete(Referral).where(Referral.event_id.in_(organized_event_ids)))
-            # Delete events themselves (Cascades to EventCategory securely now)
-            session.exec(delete(Event).where(Event.id.in_(organized_event_ids)))
+        
+        # Note: We no longer delete the organized events. The PostgreSQL constraints 
+        # have been updated via migration to allow "ghost" organizer IDs pointing to the deleted_users archive.
         
         # 3. Delete user's own activity and identifiers
         session.exec(delete(DeviceToken).where(DeviceToken.user_id == user_id))

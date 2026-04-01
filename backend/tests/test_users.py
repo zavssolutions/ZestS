@@ -197,12 +197,22 @@ def test_admin_delete_organizer_with_events(client, admin_user, session):
     resp = client.delete(f"/api/v1/admin/users/{org_user.id}")
     assert resp.status_code == 200
     
-    # Verify cleanup
+    # Verify cleanup & archiving
     session.expire_all()
-    assert session.get(User, org_user.id) is None
     from sqlmodel import select
-    assert session.exec(select(Event).where(Event.id == event_id)).first() is None
-    assert session.exec(select(Payment).where(Payment.event_id == event_id)).first() is None
+    from app.models.user import DeletedUser
+    
+    # User is gone
+    assert session.get(User, org_user.id) is None
+    
+    # DeletedUser archive exists
+    archive = session.exec(select(DeletedUser).where(DeletedUser.original_user_id == org_user.id)).first()
+    assert archive is not None
+    assert archive.email == "org@test.com"
+    
+    # Events and associated dependencies MUST persist
+    assert session.exec(select(Event).where(Event.id == event_id)).first() is not None
+    assert session.exec(select(Payment).where(Payment.event_id == event_id)).first() is not None
     del client.app.dependency_overrides[get_current_user]
 
 
