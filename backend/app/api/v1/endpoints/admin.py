@@ -1,19 +1,23 @@
 import json
+import logging
 from datetime import datetime, timedelta, timezone
+
+logger = logging.getLogger(__name__)
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from sqlalchemy import or_, text
+from sqlalchemy import or_, text, delete, update
 from sqlmodel import func, select
+from pydantic import BaseModel
 
 from app.api.deps import SessionDep, require_roles
 from app.models.audit import AuditLog
 from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting, StaticPage
-from pydantic import BaseModel
 from app.models.enums import UserRole
-from app.models.event import Event, EventRegistration, EventResult
-from app.models.user import User, OrganizerProfile
+from app.models.notification import Notification, DeviceToken
+from app.models.event import Event, EventRegistration, EventResult, Payment, Referral
+from app.models.user import User, OrganizerProfile, ParentChildMapping, ParentProfile, TrainerProfile, SkaterProfile
 from app.schemas.audit import AuditLogOut
 from app.schemas.content import (
     BannerCreate,
@@ -245,42 +249,44 @@ def delete_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    uid = str(user_id)
     try:
-        # Use raw SQL to clean ALL FK references reliably
-        # 1. Nullify audit_logs.user_id
-        session.exec(text("UPDATE audit_logs SET user_id = NULL WHERE user_id = :uid"), params={"uid": uid})
-        # 2. Nullify support_issues.user_id
-        session.exec(text("UPDATE support_issues SET user_id = NULL WHERE user_id = :uid"), params={"uid": uid})
-        # 3. Delete device_tokens
-        session.exec(text("DELETE FROM device_tokens WHERE user_id = :uid"), params={"uid": uid})
-        # 4. Delete notifications
-        session.exec(text("DELETE FROM notifications WHERE user_id = :uid"), params={"uid": uid})
-        # 5. Delete event_registrations
-        session.exec(text("DELETE FROM event_registrations WHERE user_id = :uid"), params={"uid": uid})
-        # 6. Delete event_results
-        session.exec(text("DELETE FROM event_results WHERE user_id = :uid"), params={"uid": uid})
-        # 7. Delete payments
-        session.exec(text("DELETE FROM payments WHERE user_id = :uid"), params={"uid": uid})
-        # 8. Delete referrals (both directions)
-        session.exec(text("DELETE FROM referrals WHERE referrer_user_id = :uid OR referred_user_id = :uid"), params={"uid": uid})
-        # 9. Nullify organizer_id on events organized by this user
+        # Programmatic cleanup for models we have imported
+        # 1. Nullify references
+        session.exec(update(AuditLog).where(AuditLog.user_id == user_id).values(user_id=None))
+        session.exec(update(SupportIssue).where(SupportIssue.user_id == user_id).values(user_id=None))
+        session.exec(update(Event).where(Event.organizer_user_id == user_id).values(organizer_user_id=None))
+        session.exec(update(User).where(User.parent_id == user_id).values(parent_id=None))
+        
+        # 2. Delete related records
+        session.exec(delete(DeviceToken).where(DeviceToken.user_id == user_id))
+        session.exec(delete(Notification).where(Notification.user_id == user_id))
+        session.exec(delete(EventRegistration).where(EventRegistration.user_id == user_id))
+        session.exec(delete(EventResult).where(EventResult.user_id == user_id))
+        session.exec(delete(Payment).where(Payment.user_id == user_id))
+        session.exec(delete(Referral).where(or_(Referral.referrer_user_id == user_id, Referral.referred_user_id == user_id)))
+        session.exec(delete(ParentChildMapping).where(or_(ParentChildMapping.parent_id == user_id, ParentChildMapping.child_id == user_id)))
+        
+        # 3. Delete profiles
+        session.exec(delete(ParentProfile).where(ParentProfile.user_id == user_id))
+        session.exec(delete(TrainerProfile).where(TrainerProfile.user_id == user_id))
+        session.exec(delete(OrganizerProfile).where(OrganizerProfile.user_id == user_id))
+        session.exec(delete(SkaterProfile).where(SkaterProfile.user_id == user_id))
+
+        # 4. Final raw SQL cleanup for any edge cases or tables without models (robustness)
+        uid = str(user_id)
         session.exec(text("UPDATE events SET organizer_id = NULL WHERE organizer_id = (SELECT organizer_id FROM organizer_profiles WHERE user_id = :uid)"), params={"uid": uid})
-        # 10. Detach children (kid users)
-        session.exec(text("UPDATE users SET parent_id = NULL WHERE parent_id = :uid"), params={"uid": uid})
-        # 11. Delete role-specific profiles (CASCADE should handle, but be explicit)
-        for tbl in ["parent_profiles", "trainer_profiles", "organizer_profiles", "skater_profiles"]:
-            session.exec(text(f"DELETE FROM {tbl} WHERE user_id = :uid"), params={"uid": uid})
-        # 12. Finally delete the user
-        session.exec(text("DELETE FROM users WHERE id = :uid"), params={"uid": uid})
+        
+        # Finally delete the user
+        session.exec(delete(User).where(User.id == user_id))
         session.commit()
     except Exception as e:
         session.rollback()
         import traceback
         detail = traceback.format_exc()
+        logger.error(f"Deletion failed for user {user_id}: {e}\n{detail}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Cannot delete user: {e}\n{detail}"
+            detail=f"Cannot delete user: {e}"
         )
 
     _log_action(session, current_user.id, "delete_user", "users", user_id)

@@ -6,6 +6,8 @@ import uuid
 
 from app.api.deps import get_current_user
 from app.models.enums import UserRole
+from sqlmodel import select
+import pytest
 from app.models.user import User, ParentChildMapping
 
 
@@ -111,6 +113,23 @@ def test_admin_delete_user(client, admin_user, session):
     client.app.dependency_overrides[get_current_user] = lambda: admin_user
     resp = client.delete(f"/api/v1/admin/users/{victim.id}")
     assert resp.status_code == 200
+    del client.app.dependency_overrides[get_current_user]
+
+
+def test_admin_delete_parent_with_kids(client, admin_user, parent_user, session):
+    # Setup: Add a kid and mapping
+    _add_kid(session, parent_user)
+    
+    client.app.dependency_overrides[get_current_user] = lambda: admin_user
+    resp = client.delete(f"/api/v1/admin/users/{parent_user.id}")
+    assert resp.status_code == 200
+    
+    # Verify mapping is gone
+    from app.models.user import ParentChildMapping
+    session.expire_all()
+    mapping = session.exec(select(ParentChildMapping).where(ParentChildMapping.parent_id == parent_user.id)).first()
+    assert mapping is None
+    
     del client.app.dependency_overrides[get_current_user]
 
 
