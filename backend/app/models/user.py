@@ -122,3 +122,19 @@ class ParentChildMapping(SQLModel, table=True):
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+
+class DeletedUser(SQLModel, table=True):
+    __tablename__ = "deleted_users"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    original_user_id: UUID = Field(index=True, unique=True)
+    role: UserRole
+    email: Optional[str] = Field(default=None, max_length=255)
+    first_name: Optional[str] = Field(default=None, max_length=50)
+    last_name: Optional[str] = Field(default=None, max_length=50)
+    
+    deleted_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
