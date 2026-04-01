@@ -133,6 +133,64 @@ def test_admin_delete_parent_with_kids(client, admin_user, parent_user, session)
     del client.app.dependency_overrides[get_current_user]
 
 
+def test_admin_delete_organizer_with_events(client, admin_user, session):
+    # Setup: Create organizer and event
+    from app.models.user import User, OrganizerProfile
+    from app.models.event import Event, Payment
+    from app.models.enums import UserRole
+    from datetime import datetime, timezone
+    
+    org_user = User(
+        email="org@test.com", 
+        first_name="Org", 
+        role=UserRole.ORGANIZER,
+        is_active=True,
+        favorite_sport="skatting" # typo in model default maybe?
+    )
+    session.add(org_user)
+    session.commit()
+    session.refresh(org_user)
+    
+    org_profile = OrganizerProfile(user_id=org_user.id, org_name="Test Org")
+    session.add(org_profile)
+    
+    event = Event(
+        title="Org Event", 
+        organizer_user_id=org_user.id,
+        start_at_utc=datetime.now(timezone.utc),
+        end_at_utc=datetime.now(timezone.utc),
+        location_name="Venue"
+    )
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    
+    # Add a payment to trigger RESTRICT
+    payment = Payment(
+        user_id=admin_user.id, 
+        event_id=event.id, 
+        amount=100.0, 
+        status="success"
+    )
+    session.add(payment)
+    session.commit()
+    
+    event_id = event.id
+    
+    # Execute deletion
+    client.app.dependency_overrides[get_current_user] = lambda: admin_user
+    resp = client.delete(f"/api/v1/admin/users/{org_user.id}")
+    assert resp.status_code == 200
+    
+    # Verify cleanup
+    session.expire_all()
+    assert session.get(User, org_user.id) is None
+    from sqlmodel import select
+    assert session.exec(select(Event).where(Event.id == event_id)).first() is None
+    assert session.exec(select(Payment).where(Payment.event_id == event_id)).first() is None
+    del client.app.dependency_overrides[get_current_user]
+
+
 # ── Admin: dashboard stats ───────────────────────────────────────────
 
 def test_admin_stats(client, admin_user, sample_event):

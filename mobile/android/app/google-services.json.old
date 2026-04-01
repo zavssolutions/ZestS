@@ -1,0 +1,38 @@
+{
+  "project_info": {
+    "project_number": "278971942608",
+    "project_id": "test-49b1d",
+    "storage_bucket": "test-49b1d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:278971942608:android:64d99eeff28c0d4b77c0d5",
+        "android_client_info": {
+          "package_name": "com.zests.zestsmvp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "278971942608-tpuv8od5stt379qqjh5lvue4fmct69rs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.zests.zestsmvp",
+            "certificate_hash": "3afd5907e9e229c8f5e17d03c3ae67ce46c85c78"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmrDBflNOU8HwDg4naIFa6HcawE2fEFDk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

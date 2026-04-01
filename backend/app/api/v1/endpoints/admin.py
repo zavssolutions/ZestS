@@ -251,13 +251,22 @@ def delete_user(
 
     try:
         # Programmatic cleanup for models we have imported
-        # 1. Nullify references
+        # 1. Nullify references (non-restrictive)
         session.exec(update(AuditLog).where(AuditLog.user_id == user_id).values(user_id=None))
         session.exec(update(SupportIssue).where(SupportIssue.user_id == user_id).values(user_id=None))
-        session.exec(update(Event).where(Event.organizer_user_id == user_id).values(organizer_user_id=None))
         session.exec(update(User).where(User.parent_id == user_id).values(parent_id=None))
+
+        # 2. Handle Organizers: Find organized events and delete them to avoid NotNullViolation 
+        # on organizer_user_id and RESTRICT violations from payments.
+        stmt_event_ids = select(Event.id).where(Event.organizer_user_id == user_id)
+        organized_event_ids = session.exec(stmt_event_ids).all()
+        if organized_event_ids:
+            # Delete payments for these events first (RESTRICT)
+            session.exec(delete(Payment).where(Payment.event_id.in_(organized_event_ids)))
+            # Delete events themselves (Cascades to registrations/results)
+            session.exec(delete(Event).where(Event.id.in_(organized_event_ids)))
         
-        # 2. Delete related records
+        # 3. Delete user's own activity and identifiers
         session.exec(delete(DeviceToken).where(DeviceToken.user_id == user_id))
         session.exec(delete(Notification).where(Notification.user_id == user_id))
         session.exec(delete(EventRegistration).where(EventRegistration.user_id == user_id))
@@ -266,13 +275,13 @@ def delete_user(
         session.exec(delete(Referral).where(or_(Referral.referrer_user_id == user_id, Referral.referred_user_id == user_id)))
         session.exec(delete(ParentChildMapping).where(or_(ParentChildMapping.parent_id == user_id, ParentChildMapping.child_id == user_id)))
         
-        # 3. Delete profiles
+        # 4. Delete profiles
         session.exec(delete(ParentProfile).where(ParentProfile.user_id == user_id))
         session.exec(delete(TrainerProfile).where(TrainerProfile.user_id == user_id))
         session.exec(delete(OrganizerProfile).where(OrganizerProfile.user_id == user_id))
         session.exec(delete(SkaterProfile).where(SkaterProfile.user_id == user_id))
 
-        # 4. Final raw SQL cleanup for any edge cases or tables without models (robustness)
+        # Final raw SQL cleanup for any edge cases
         uid = str(user_id)
         session.exec(text("UPDATE events SET organizer_id = NULL WHERE organizer_id = (SELECT organizer_id FROM organizer_profiles WHERE user_id = :uid)"), params={"uid": uid})
         
