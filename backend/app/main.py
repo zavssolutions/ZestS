@@ -26,11 +26,14 @@ configure_logging()
 def run_migrations():
     try:
         logger.info("Running automatic Alembic migrations...")
-        alembic_cfg = Config("alembic.ini")
+        import os
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
+        alembic_cfg = Config(alembic_ini_path)
+        alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+        
         command.upgrade(alembic_cfg, "head")
         logger.info("Alembic migrations successful.")
-        
-        logger.info("Running raw SQL database fixes...")
         with engine.begin() as conn:
             # Fix users table
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
