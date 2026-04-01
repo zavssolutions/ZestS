@@ -10,7 +10,7 @@ from sqlmodel import select
 from app.api.deps import CurrentUser, OptionalCurrentUser, SessionDep, require_roles
 from app.models.enums import EventStatus, UserRole
 from app.models.event import Event, EventCategory, EventRegistration, Referral
-from app.models.user import User, OrganizerProfile
+from app.models.user import User, OrganizerProfile, ParentChildMapping
 from app.schemas.event import (
     EventCreate,
     EventCategoryCreate,
@@ -163,8 +163,12 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
     if payload.user_id and current_user.role != UserRole.PARENT:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only parents can register a kid")
     if payload.user_id and current_user.role == UserRole.PARENT:
-        kid = session.get(User, payload.user_id)
-        if kid is None or kid.parent_id != current_user.id:
+        mapping = session.exec(
+            select(ParentChildMapping)
+            .where(ParentChildMapping.parent_id == current_user.id)
+            .where(ParentChildMapping.child_id == payload.user_id)
+        ).first()
+        if not mapping:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid kid profile")
 
     # 1. Check Event Status
@@ -215,8 +219,12 @@ def register_event_bulk(payload: EventRegistrationBulkCreate, current_user: Curr
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only parents can register a kid")
     
     if payload.user_id and current_user.role == UserRole.PARENT:
-        kid = session.get(User, payload.user_id)
-        if kid is None or kid.parent_id != current_user.id:
+        mapping = session.exec(
+            select(ParentChildMapping)
+            .where(ParentChildMapping.parent_id == current_user.id)
+            .where(ParentChildMapping.child_id == payload.user_id)
+        ).first()
+        if not mapping:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid kid profile")
 
     # 1. Check Event Status
@@ -273,10 +281,13 @@ def list_my_registrations(current_user: CurrentUser, session: SessionDep) -> lis
     name_map: dict[UUID, str] = {current_user.id: current_user.first_name or "User"}
 
     if current_user.role == UserRole.PARENT:
-        kids = session.exec(select(User).where(User.parent_id == current_user.id)).all()
-        for kid in kids:
-            user_ids.append(kid.id)
-            name_map[kid.id] = f"{kid.first_name or ''} {kid.last_name or ''}".strip() or "Kid"
+        mappings = session.exec(select(ParentChildMapping).where(ParentChildMapping.parent_id == current_user.id)).all()
+        child_ids = [m.child_id for m in mappings]
+        if child_ids:
+            kids = session.exec(select(User).where(User.id.in_(child_ids))).all()
+            for kid in kids:
+                user_ids.append(kid.id)
+                name_map[kid.id] = f"{kid.first_name or ''} {kid.last_name or ''}".strip() or "Kid"
 
     registrations = session.exec(select(EventRegistration).where(EventRegistration.user_id.in_(user_ids))).all()
     results: list[dict] = []

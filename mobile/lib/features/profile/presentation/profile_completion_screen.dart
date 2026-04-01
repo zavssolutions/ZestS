@@ -34,12 +34,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
   String? _ageGroup;
   
   // Parent Kid Details
-  final _kidFirstNameController = TextEditingController();
-  final _kidLastNameController = TextEditingController();
-  DateTime? _kidDob;
-  String _kidGender = "unspecified";
-  String? _kidSkateType;
-  String? _kidAgeGroup;
+  final List<_KidFormModel> _kids = [_KidFormModel()];
 
   final _skateTypes = ["Inline", "Quad", "Toy inline", "tenacity"];
   final _ageGroups = [
@@ -82,17 +77,26 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
     }
     
     if (_role == "parent") {
-      if (_kidFirstNameController.text.trim().isEmpty) {
+      if (_kids.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Kid's first name is required")),
+          const SnackBar(content: Text("At least one kid is required for Parent role")),
         );
         return;
       }
-      if (_kidDob == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Kid's Date of Birth is mandatory")),
-        );
-        return;
+      for (var i = 0; i < _kids.length; i++) {
+        final kid = _kids[i];
+        if (kid.firstNameController.text.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Kid ${i + 1}'s first name is required")),
+          );
+          return;
+        }
+        if (kid.dob == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Kid ${i + 1}'s Date of Birth is mandatory")),
+          );
+          return;
+        }
       }
     }
 
@@ -117,14 +121,16 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
           );
           
       if (_role == "parent") {
-        await ref.read(profileRepositoryProvider).addKid(
-              firstName: _kidFirstNameController.text.trim(),
-              lastName: _kidLastNameController.text.trim(),
-              dob: _kidDob!,
-              gender: _kidGender,
-              skateType: _kidSkateType,
-              ageGroup: _kidAgeGroup,
-            );
+        for (final kid in _kids) {
+          await ref.read(profileRepositoryProvider).addKid(
+                firstName: kid.firstNameController.text.trim(),
+                lastName: kid.lastNameController.text.trim(),
+                dob: kid.dob!,
+                gender: kid.gender,
+                skateType: kid.skateType,
+                ageGroup: kid.ageGroup,
+              );
+        }
       }
           
       ref.invalidate(cachedProfileProvider);
@@ -153,6 +159,22 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
     );
     if (picked != null) {
       setState(() => _dob = picked);
+    }
+  }
+
+  void _addKid() {
+    if (_kids.length < 3) {
+      setState(() => _kids.add(_KidFormModel()));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Maximum 3 kids allowed")),
+      );
+    }
+  }
+
+  void _removeKid(int index) {
+    if (_kids.length > 1) {
+      setState(() => _kids.removeAt(index));
     }
   }
 
@@ -200,51 +222,90 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             
             if (_role == "parent") ...[
               const SizedBox(height: 16),
-              const Text("Kid Details", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              TextField(controller: _kidFirstNameController, decoration: const InputDecoration(labelText: "Kid's First name *")),
-              const SizedBox(height: 12),
-              TextField(controller: _kidLastNameController, decoration: const InputDecoration(labelText: "Kid's Last name (optional)")),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () async {
-                  final now = DateTime.now();
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime(now.year - 8, 1, 1),
-                    firstDate: DateTime(2005, 1, 1),
-                    lastDate: now,
-                  );
-                  if (picked != null) setState(() => _kidDob = picked);
-                },
-                child: Text(_kidDob == null ? "Kid's DOB * (Required)" : "Kid's DOB: ${_kidDob!.toLocal().toIso8601String().split("T")[0]}"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _kidGender,
-                decoration: const InputDecoration(labelText: "Kid's Gender"),
-                items: const [
-                  DropdownMenuItem(value: "male", child: Text("Male")),
-                  DropdownMenuItem(value: "female", child: Text("Female")),
-                  DropdownMenuItem(value: "other", child: Text("Other")),
-                  DropdownMenuItem(value: "unspecified", child: Text("Unspecified")),
-                ],
-                onChanged: (val) => setState(() => _kidGender = val ?? "unspecified"),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _kidSkateType,
-                decoration: const InputDecoration(labelText: "Kid's Skate Type"),
-                items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
-                onChanged: (val) => setState(() => _kidSkateType = val),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _kidAgeGroup,
-                decoration: const InputDecoration(labelText: "Kid's Age Group"),
-                items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                onChanged: (val) => setState(() => _kidAgeGroup = val),
-              ),
+              const Text("Kid Details (Max 3)", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("At least one kid is mandatory", style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 8),
+              ..._kids.asMap().entries.map((entry) {
+                final index = entry.key;
+                final kid = entry.value;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Kid #${index + 1}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                            if (_kids.length > 1)
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _removeKid(index),
+                              ),
+                          ],
+                        ),
+                        TextField(
+                          controller: kid.firstNameController,
+                          decoration: const InputDecoration(labelText: "Kid's First name *"),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: kid.lastNameController,
+                          decoration: const InputDecoration(labelText: "Kid's Last name (optional)"),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () async {
+                            final now = DateTime.now();
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: DateTime(now.year - 8, 1, 1),
+                              firstDate: DateTime(2005, 1, 1),
+                              lastDate: now,
+                            );
+                            if (picked != null) setState(() => kid.dob = picked);
+                          },
+                          child: Text(kid.dob == null ? "Kid's DOB * (Required)" : "Kid's DOB: ${kid.dob!.toLocal().toIso8601String().split("T")[0]}"),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: kid.gender,
+                          decoration: const InputDecoration(labelText: "Kid's Gender"),
+                          items: const [
+                            DropdownMenuItem(value: "male", child: Text("Male")),
+                            DropdownMenuItem(value: "female", child: Text("Female")),
+                            DropdownMenuItem(value: "other", child: Text("Other")),
+                            DropdownMenuItem(value: "unspecified", child: Text("Unspecified")),
+                          ],
+                          onChanged: (val) => setState(() => kid.gender = val ?? "unspecified"),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: kid.skateType,
+                          decoration: const InputDecoration(labelText: "Kid's Skate Type"),
+                          items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          onChanged: (val) => setState(() => kid.skateType = val),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: kid.ageGroup,
+                          decoration: const InputDecoration(labelText: "Kid's Age Group"),
+                          items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                          onChanged: (val) => setState(() => kid.ageGroup = val),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              if (_kids.length < 3)
+                TextButton.icon(
+                  onPressed: _addKid,
+                  icon: const Icon(Icons.add),
+                  label: const Text("Add Another Kid"),
+                ),
             ],
             
             if (_role == "trainer") ...[
@@ -312,4 +373,13 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
       ),
     );
   }
+}
+
+class _KidFormModel {
+  final firstNameController = TextEditingController();
+  final lastNameController = TextEditingController();
+  DateTime? dob;
+  String gender = "unspecified";
+  String? skateType;
+  String? ageGroup;
 }

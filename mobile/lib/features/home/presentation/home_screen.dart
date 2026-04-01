@@ -17,6 +17,7 @@ import "banner_view_screen.dart";
 import "../../../features/profile/data/profile_model.dart";
 import "../../../features/profile/data/profile_providers.dart";
 import "../../../features/admin/presentation/admin_screens.dart";
+import "../../../features/profile/data/kid_provider.dart";
 import "../../../core/constants.dart";
 
 enum _HomeTab { dashboard, search, schedule, home }
@@ -485,21 +486,118 @@ class _DashboardPage extends ConsumerWidget {
   }
 }
 
-class _ParentDashboard extends ConsumerStatefulWidget {
+class _ParentDashboard extends ConsumerWidget {
   const _ParentDashboard();
+
   @override
-  ConsumerState<_ParentDashboard> createState() => _ParentDashboardState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final kidsAsync = ref.watch(kidsProvider);
+    final selectedKidId = ref.watch(selectedKidProvider);
+
+    return kidsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Center(child: Text("Error loading kids: $e")),
+      data: (kids) {
+        if (kids.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text("No kids added yet."),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: () => _showAddKidDialog(context, ref),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Add Your First Kid"),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            _HorizontalKidSwitcher(kids: kids),
+            const Divider(height: 1),
+            Expanded(
+              child: selectedKidId == null
+                  ? _KidSelectorOverview(kids: kids)
+                  : _KidDetailsView(kid: kids.firstWhere((k) => k.id == selectedKidId)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
-class _ParentDashboardState extends ConsumerState<_ParentDashboard> {
-  ProfileModel? selectedKid;
+class _HorizontalKidSwitcher extends ConsumerWidget {
+  final List<ProfileModel> kids;
+  const _HorizontalKidSwitcher({required this.kids});
 
   @override
-  Widget build(BuildContext context) {
-    final kidsAsync = ref.watch(kidsProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedKidId = ref.watch(selectedKidProvider);
 
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: kids.length,
+        itemBuilder: (context, index) {
+          final kid = kids[index];
+          final isSelected = selectedKidId == kid.id;
+          return Padding(
+            padding: const EdgeInsets.only(right: 20),
+            child: GestureDetector(
+              onTap: () => ref.read(selectedKidProvider.notifier).selectKid(kid.id),
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? Colors.cyan : Colors.transparent,
+                        width: 3,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundImage: kid.profilePictureUrl != null && kid.profilePictureUrl!.isNotEmpty
+                          ? CachedNetworkImageProvider(imageUrl(kid.profilePictureUrl))
+                          : null,
+                      child: kid.profilePictureUrl == null ? const Icon(Icons.person, size: 30) : null,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    kid.firstName ?? "Kid",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.cyan : null,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _KidSelectorOverview extends ConsumerWidget {
+  final List<ProfileModel> kids;
+  const _KidSelectorOverview({required this.kids});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -507,104 +605,116 @@ class _ParentDashboardState extends ConsumerState<_ParentDashboard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Parent Dashboard',
+                "My Kids",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
-              IconButton.filledTonal(
-                icon: const Icon(Icons.person_add),
-                onPressed: () => _showAddKidDialog(context, ref),
-                tooltip: "Add Kid",
+              if (kids.length < 3)
+                TextButton.icon(
+                  onPressed: () => _showAddKidDialog(context, ref),
+                  icon: const Icon(Icons.add),
+                  label: const Text("Add Kid"),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...kids.map((kid) => Card(
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.person)),
+              title: Text("${kid.firstName} ${kid.lastName ?? ''}"),
+              subtitle: Text("DOB: ${kid.dobDateTime?.toLocal().toIso8601String().split('T')[0] ?? 'N/A'}"),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => ref.read(selectedKidProvider.notifier).selectKid(kid.id),
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+class _KidDetailsView extends ConsumerWidget {
+  final ProfileModel kid;
+  const _KidDetailsView({required this.kid});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => ref.read(selectedKidProvider.notifier).clearSelection(),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "${kid.firstName}'s Dashboard",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          // Stats
           Row(
             children: [
               Expanded(
                 child: _StatCard(
-                  label: "Total Kids",
-                  value: kidsAsync.valueOrNull?.length.toString() ?? "0",
-                  icon: Icons.child_care,
-                  color: Colors.blue,
+                  label: "Points",
+                  value: "0",
+                  icon: Icons.stars,
+                  color: Colors.purple,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: _StatCard(
-                  label: "Upcoming",
-                  value: "0",
-                  icon: Icons.calendar_today,
-                  color: Colors.orange,
+                  label: "Rank",
+                  value: "-",
+                  icon: Icons.leaderboard,
+                  color: Colors.cyan,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          kidsAsync.when(
-            data: (kids) {
-              if (kids.isEmpty) {
-                return const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Center(child: Text("No kids added yet. Add a kid to get started!")),
-                  ),
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  DropdownButtonFormField<ProfileModel>(
-                    decoration: const InputDecoration(
-                      labelText: "Quick Select Kid",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    value: selectedKid ?? (kids.isNotEmpty ? kids.first : null),
-                    items: kids.map((appKid) {
-                      return DropdownMenuItem(value: appKid, child: Text(appKid.displayName));
-                    }).toList(),
-                    onChanged: (val) => setState(() => selectedKid = val),
-                  ),
-                  const SizedBox(height: 20),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    children: [
-                      _DashboardActionCard(
-                        title: "Manage Kids",
-                        icon: Icons.people_outline,
-                        color: Colors.indigo,
-                        onTap: () {/* Navigate to kids list */},
-                      ),
-                      _DashboardActionCard(
-                        title: "Register Event",
-                        icon: Icons.app_registration,
-                        color: Colors.green,
-                        onTap: () {/* Navigate to events search */},
-                      ),
-                      _DashboardActionCard(
-                        title: "Past Results",
-                        icon: Icons.workspace_premium,
-                        color: Colors.amber,
-                        onTap: () {/* Navigate to results */},
-                      ),
-                      _DashboardActionCard(
-                        title: "Support",
-                        icon: Icons.help_outline,
-                        color: Colors.teal,
-                        onTap: () => context.push("/support"),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-            error: (e, st) => Text("Error loading kids: $e"),
-            loading: () => const Center(child: CircularProgressIndicator()),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            children: [
+              _DashboardActionCard(
+                title: "Register Event",
+                icon: Icons.event_available,
+                color: Colors.green,
+                onTap: () {
+                   // When registering, we should pass the kid ID
+                   // I'll update EventDetailScreen next
+                },
+              ),
+              _DashboardActionCard(
+                title: "Progress",
+                icon: Icons.trending_up,
+                color: Colors.blue,
+                onTap: () {},
+              ),
+              _DashboardActionCard(
+                title: "Certificates",
+                icon: Icons.workspace_premium,
+                color: Colors.amber,
+                onTap: () {},
+              ),
+              _DashboardActionCard(
+                title: "Edit Info",
+                icon: Icons.edit,
+                color: Colors.grey,
+                onTap: () {},
+              ),
+            ],
           ),
         ],
       ),

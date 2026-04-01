@@ -10,6 +10,7 @@ import "../data/event_model.dart";
 import "../data/events_repository.dart";
 import "../../profile/data/profile_providers.dart";
 import "../../profile/data/profile_model.dart";
+import "../../../features/profile/data/kid_provider.dart";
 import "../../../core/constants.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {
@@ -174,8 +175,18 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                 if (profile.role == "parent") {
                   return kidsAsync.when(
                     data: (kids) {
+                      final activeKidId = ref.watch(selectedKidProvider);
                       final options = [profile, ...kids];
-                      _selectedUserId ??= options.first.id;
+                      
+                      // Initialize _selectedUserId if not already set
+                      if (_selectedUserId == null) {
+                        if (activeKidId != null && options.any((o) => o.id == activeKidId)) {
+                          _selectedUserId = activeKidId;
+                        } else {
+                          _selectedUserId = options.first.id;
+                        }
+                      }
+
                       return DropdownButtonFormField<String>(
                         value: _selectedUserId,
                         items: options
@@ -187,7 +198,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             )
                             .toList(),
                         onChanged: (value) => setState(() => _selectedUserId = value),
-                        decoration: const InputDecoration(labelText: "Register for"),
+                        decoration: const InputDecoration(
+                          labelText: "Register for",
+                          prefixIcon: Icon(Icons.person_outline),
+                          border: OutlineInputBorder(),
+                        ),
                       );
                     },
                     error: (error, stackTrace) => const Text("Kid profiles are unavailable right now."),

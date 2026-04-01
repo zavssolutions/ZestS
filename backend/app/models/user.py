@@ -109,3 +109,16 @@ class SkaterProfile(SQLModel, table=True):
     school_name: Optional[str] = Field(default=None, max_length=100)
     skate_type: Optional[str] = Field(default=None, max_length=60)
     age_group: Optional[str] = Field(default=None, max_length=60)
+
+
+class ParentChildMapping(SQLModel, table=True):
+    __tablename__ = "parent_child_mapping"
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    parent_id: UUID = Field(foreign_key="users.id", index=True)
+    child_id: UUID = Field(foreign_key="users.id", index=True)
+
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

@@ -30,6 +30,8 @@ class ProfileModel {
     return name.isEmpty ? "ZestS User" : name;
   }
 
+  DateTime? get dobDateTime => dob != null ? DateTime.tryParse(dob!) : null;
+
   bool get isSubProfile => parentId != null;
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {

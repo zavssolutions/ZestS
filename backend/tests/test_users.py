@@ -6,7 +6,7 @@ import uuid
 
 from app.api.deps import get_current_user
 from app.models.enums import UserRole
-from app.models.user import User
+from app.models.user import User, ParentChildMapping
 
 
 # ── Profile: GET /me ─────────────────────────────────────────────────
@@ -143,6 +143,8 @@ def _add_kid(session, parent: User) -> User:
         dob=date(2017, 3, 1),
     )
     session.add(kid)
+    mapping = ParentChildMapping(parent_id=parent.id, child_id=kid.id)
+    session.add(mapping)
     session.commit()
     session.refresh(kid)
     return kid

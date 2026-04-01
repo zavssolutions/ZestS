@@ -1,10 +1,11 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import select, func
 
 from app.api.deps import CurrentUser, SessionDep, require_roles
 from app.core.config import get_settings
 from app.models.enums import UserRole
-from app.models.user import User
+from app.models.user import User, ParentChildMapping
 from app.models.event import Referral
 from app.schemas.user import KidCreate, UserProfileOut, UserProfileUpsert
 
@@ -99,6 +100,12 @@ def add_kid(
     session.add(kid)
     session.commit()
     session.refresh(kid)
+
+    # Add to mapping table
+    mapping = ParentChildMapping(parent_id=current_user.id, child_id=kid.id)
+    session.add(mapping)
+    session.commit()
+
     return kid
 
 
@@ -107,4 +114,28 @@ def list_kids(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.PARENT)),
 ) -> list[User]:
-    return session.exec(select(User).where(User.parent_id == current_user.id)).all()
+    mappings = session.exec(select(ParentChildMapping).where(ParentChildMapping.parent_id == current_user.id)).all()
+    child_ids = [m.child_id for m in mappings]
+    if not child_ids:
+        return []
+    return session.exec(select(User).where(User.id.in_(child_ids))).all()
+
+
+@router.get("/me/kids/{kid_id}", response_model=UserProfileOut)
+def get_kid_details(
+    kid_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.PARENT)),
+) -> User:
+    mapping = session.exec(
+        select(ParentChildMapping)
+        .where(ParentChildMapping.parent_id == current_user.id)
+        .where(ParentChildMapping.child_id == kid_id)
+    ).first()
+    if not mapping:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kid not found")
+    
+    kid = session.get(User, kid_id)
+    if not kid:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kid user not found")
+    return kid
