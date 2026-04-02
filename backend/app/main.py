@@ -28,13 +28,12 @@ configure_logging()
 
 def run_migrations():
     try:
-        print("DEBUG: Starting run_migrations...")
-        logger.info("Running automatic Alembic migrations...")
-        import os
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        alembic_ini_path = os.path.join(base_dir, "alembic.ini")
-        alembic_cfg = Config(alembic_ini_path)
-        alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+        print("DEBUG: Starting SQLModel Native Database Creation (Bypassing Alembic)...")
+        logger.info("Initializing database schema...")
+        from sqlmodel import SQLModel
+        
+        # We must import all models so SQLModel registers them before create_all is called
+        import app.models  # Ensures registries are mapped
         
         print("DEBUG: Forcefully terminating other DB connections to prevent deadlocks...")
         with engine.begin() as conn:
@@ -48,12 +47,11 @@ def run_migrations():
         time.sleep(1) # Yield a moment for locks to properly release
         print("DEBUG: Other connections terminated.")
         
-        print("DEBUG: Executing alembic upgrade head...")
-        command.upgrade(alembic_cfg, "head")
-        print("DEBUG: Alembic migrations completed without Python errors.")
-        logger.info("Alembic migrations successful.")
+        print("DEBUG: Executing SQLModel.metadata.create_all(engine)...")
+        SQLModel.metadata.create_all(engine)
+        print("DEBUG: SQLModel table creation completed natively without freezing.")
         
-        print("DEBUG: Starting raw SQL fixes...")
+        print("DEBUG: Starting raw SQL fixes to complement SQLModel...")
         with engine.begin() as conn:
             # Fix users table
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
