@@ -36,6 +36,18 @@ def run_migrations():
         alembic_cfg = Config(alembic_ini_path)
         alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
         
+        print("DEBUG: Forcefully terminating other DB connections to prevent deadlocks...")
+        with engine.begin() as conn:
+            conn.execute(text("""
+                SELECT pg_terminate_backend(pg_stat_activity.pid)
+                FROM pg_stat_activity
+                WHERE pg_stat_activity.datname = current_database()
+                  AND pid <> pg_backend_pid();
+            """))
+        import time
+        time.sleep(1) # Yield a moment for locks to properly release
+        print("DEBUG: Other connections terminated.")
+        
         print("DEBUG: Executing alembic upgrade head...")
         command.upgrade(alembic_cfg, "head")
         print("DEBUG: Alembic migrations completed without Python errors.")
