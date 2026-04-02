@@ -28,6 +28,7 @@ configure_logging()
 
 def run_migrations():
     try:
+        print("DEBUG: Starting run_migrations...")
         logger.info("Running automatic Alembic migrations...")
         import os
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,8 +36,12 @@ def run_migrations():
         alembic_cfg = Config(alembic_ini_path)
         alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
         
+        print("DEBUG: Executing alembic upgrade head...")
         command.upgrade(alembic_cfg, "head")
+        print("DEBUG: Alembic migrations completed without Python errors.")
         logger.info("Alembic migrations successful.")
+        
+        print("DEBUG: Starting raw SQL fixes...")
         with engine.begin() as conn:
             # Fix users table
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
@@ -60,9 +65,15 @@ def run_migrations():
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS images_url JSONB"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS other_urls JSONB"))
             
+        print("DEBUG: Raw SQL fixes completed gracefully.")
         logger.info("Raw SQL fixes completed successfully.")
     except Exception as e:
+        import traceback
+        print("!!! CRITICAL MIGRATION ERROR !!!")
+        print(f"Exception Message: {e}")
+        traceback.print_exc()
         logger.error(f"Error running raw SQL fixes: {e}")
+        raise e  # DO NOT SWALLOW
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
