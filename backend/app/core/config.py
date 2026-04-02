@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
     celery_enabled: bool = Field(default=False, alias="CELERY_ENABLED")
     reset_database: bool = Field(default=False, alias="RESET_DATABASE")
+    run_migrations: bool = Field(default=True, alias="RUN_MIGRATIONS")
 
 
 @lru_cache

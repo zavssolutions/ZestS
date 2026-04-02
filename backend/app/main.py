@@ -80,9 +80,12 @@ async def lifespan(_: FastAPI):
             logger.error(f"Database reset failed: {e}")
     
     # Run migrations in a background thread to avoid blocking the event loop
-    print("DEBUG: Running migrations...")
-    await asyncio.to_thread(run_migrations)
-    print("DEBUG: Migrations finished")
+    if settings.run_migrations:
+        print("DEBUG: Running migrations...")
+        await asyncio.to_thread(run_migrations)
+        print("DEBUG: Migrations finished")
+    else:
+        print("DEBUG: Automatic migrations are disabled (RUN_MIGRATIONS=False)")
     yield
 
 
