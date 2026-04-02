@@ -133,6 +133,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # ── Health check ─────────────────────────────────────────────────────────
 
+@app.get("/", tags=["system"])
+def root() -> dict:
+    return {
+        "message": "ZestS MVP API is running",
+        "docs": f"{settings.api_v1_prefix}/docs",
+        "health": "/healthz"
+    }
+
 @app.get("/healthz", tags=["system"])
 def healthz() -> dict:
     return {"status": "ok"}
