@@ -59,13 +59,30 @@ def run_migrations():
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
             
             # Cast legacy ENUMs to VARCHAR to match the SQLModel definition and prevent DatatypeMismatch
+            
+            # Drop dependent constraints first
+            conn.execute(text("ALTER TABLE users DROP CONSTRAINT IF EXISTS ck_users_kid_dob_required"))
+            
+            conn.execute(text("ALTER TABLE users ALTER COLUMN role DROP DEFAULT"))
             conn.execute(text("ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(20) USING role::text"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN role SET DEFAULT 'parent'"))
+            
+            conn.execute(text("ALTER TABLE users ALTER COLUMN gender DROP DEFAULT"))
             conn.execute(text("ALTER TABLE users ALTER COLUMN gender TYPE VARCHAR(20) USING gender::text"))
+            conn.execute(text("ALTER TABLE users ALTER COLUMN gender SET DEFAULT 'unspecified'"))
             
             # Cast event and payment ENUMs to VARCHAR
+            conn.execute(text("ALTER TABLE events ALTER COLUMN status DROP DEFAULT"))
             conn.execute(text("ALTER TABLE events ALTER COLUMN status TYPE VARCHAR(20) USING status::text"))
+            conn.execute(text("ALTER TABLE events ALTER COLUMN status SET DEFAULT 'draft'"))
+            
+            conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status DROP DEFAULT"))
             conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status TYPE VARCHAR(20) USING status::text"))
+            conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status SET DEFAULT 'pending'"))
+            
+            conn.execute(text("ALTER TABLE payments ALTER COLUMN status DROP DEFAULT"))
             conn.execute(text("ALTER TABLE payments ALTER COLUMN status TYPE VARCHAR(20) USING status::text"))
+            conn.execute(text("ALTER TABLE payments ALTER COLUMN status SET DEFAULT 'initiated'"))
             
             # Fix skater_profiles
             conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
