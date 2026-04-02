@@ -63,7 +63,7 @@ def run_migrations():
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    run_migrations()
+    # run_migrations()
     yield
 
 
