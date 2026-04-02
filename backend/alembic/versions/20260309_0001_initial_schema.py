@@ -1,4 +1,4 @@
-﻿"""Initial ZestS schema
+"""Initial ZestS schema
 
 Revision ID: 20260309_0001
 Revises:
@@ -16,10 +16,11 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(
-        """
-        CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    # 1. Extensions
+    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 
+    # 2. Custom Types (Enums)
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
@@ -38,7 +39,10 @@ def upgrade() -> None:
                 CREATE TYPE payment_status AS ENUM ('initiated', 'success', 'failed', 'refunded');
             END IF;
         END $$;
+    """)
 
+    # 3. Tables
+    op.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             parent_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -65,16 +69,22 @@ def upgrade() -> None:
             last_login_at TIMESTAMPTZ,
             CONSTRAINT ck_users_kid_dob_required CHECK (role <> 'kid' OR dob IS NOT NULL)
         );
+    """)
 
+    op.execute("""
         CREATE UNIQUE INDEX IF NOT EXISTS uq_users_mobile_no ON users(mobile_no) WHERE mobile_no IS NOT NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users(email) WHERE email IS NOT NULL;
         CREATE UNIQUE INDEX IF NOT EXISTS uq_users_firebase_uid ON users(firebase_uid) WHERE firebase_uid IS NOT NULL;
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS parent_profiles (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             max_kids_allowed INTEGER NOT NULL DEFAULT 3
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS trainer_profiles (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             school_name VARCHAR(100),
@@ -82,14 +92,18 @@ def upgrade() -> None:
             specialization TEXT,
             experience_years INTEGER
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS organizer_profiles (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             org_name VARCHAR(120) NOT NULL,
             website_url VARCHAR(255),
             is_verified_org BOOLEAN NOT NULL DEFAULT FALSE
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS skater_profiles (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             skill_level VARCHAR(50),
@@ -97,7 +111,9 @@ def upgrade() -> None:
             preferred_tracks TEXT,
             school_name VARCHAR(100)
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS static_pages (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             slug VARCHAR(100) NOT NULL UNIQUE,
@@ -106,7 +122,9 @@ def upgrade() -> None:
             is_published BOOLEAN NOT NULL DEFAULT TRUE,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS banners (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             title VARCHAR(200),
@@ -117,7 +135,9 @@ def upgrade() -> None:
             is_active BOOLEAN NOT NULL DEFAULT TRUE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS sponsors (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR(120) NOT NULL,
@@ -125,13 +145,17 @@ def upgrade() -> None:
             website_url VARCHAR(500),
             is_active BOOLEAN NOT NULL DEFAULT TRUE
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS system_settings (
             key VARCHAR(100) PRIMARY KEY,
             value TEXT NOT NULL DEFAULT '',
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS support_issues (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -140,7 +164,9 @@ def upgrade() -> None:
             status VARCHAR(20) NOT NULL DEFAULT 'open',
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS events (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             organizer_user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -158,10 +184,14 @@ def upgrade() -> None:
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CONSTRAINT ck_events_time_valid CHECK (end_at_utc > start_at_utc)
         );
+    """)
 
+    op.execute("""
         CREATE INDEX IF NOT EXISTS ix_events_start_at_utc ON events(start_at_utc);
         CREATE INDEX IF NOT EXISTS ix_events_status ON events(status);
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS event_categories (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -175,7 +205,9 @@ def upgrade() -> None:
             price NUMERIC(10, 2) NOT NULL DEFAULT 0,
             CONSTRAINT uq_event_categories_event_name UNIQUE (event_id, name)
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS payments (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -188,7 +220,9 @@ def upgrade() -> None:
             external_transaction_id VARCHAR(100),
             paid_at TIMESTAMPTZ
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS event_registrations (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -200,7 +234,9 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CONSTRAINT uq_event_registration UNIQUE (event_id, category_id, user_id)
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS event_results (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -212,7 +248,9 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CONSTRAINT uq_event_result UNIQUE (event_id, category_id, user_id)
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS referrals (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -222,7 +260,9 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
             CONSTRAINT uq_referral UNIQUE (event_id, referrer_user_id, referred_user_id)
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS notification_preferences (
             user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
             push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -231,7 +271,9 @@ def upgrade() -> None:
             event_reminders BOOLEAN NOT NULL DEFAULT TRUE,
             marketing BOOLEAN NOT NULL DEFAULT FALSE
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS device_tokens (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -239,9 +281,11 @@ def upgrade() -> None:
             platform VARCHAR(20) NOT NULL,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_device_tokens_token ON device_tokens(token);
+    op.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_device_tokens_token ON device_tokens(token);")
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS notifications (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -251,7 +295,9 @@ def upgrade() -> None:
             is_read BOOLEAN NOT NULL DEFAULT FALSE,
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
+    op.execute("""
         CREATE TABLE IF NOT EXISTS audit_logs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -263,13 +309,18 @@ def upgrade() -> None:
             ip_address VARCHAR(64),
             created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
+    """)
 
-        CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs(created_at);
+    op.execute("CREATE INDEX IF NOT EXISTS ix_audit_logs_created_at ON audit_logs(created_at);")
 
+    # 4. Initial Data
+    op.execute("""
         INSERT INTO static_pages (slug, title, content)
         VALUES ('terms-and-conditions', 'Terms and Conditions', '')
         ON CONFLICT (slug) DO NOTHING;
+    """)
 
+    op.execute("""
         INSERT INTO static_pages (slug, title, content)
         VALUES (
             'about-us',
@@ -277,13 +328,11 @@ def upgrade() -> None:
             'Everyday, as our children spent three intense hours on the skating rink, we waited on the sidelines - watching, learning, and hoping we were making the right decisions for their future.'
         )
         ON CONFLICT (slug) DO NOTHING;
-        """
-    )
+    """)
 
 
 def downgrade() -> None:
-    op.execute(
-        """
+    op.execute("""
         DROP TABLE IF EXISTS audit_logs;
         DROP TABLE IF EXISTS notifications;
         DROP TABLE IF EXISTS device_tokens;
@@ -310,5 +359,4 @@ def downgrade() -> None:
         DROP TYPE IF EXISTS event_status;
         DROP TYPE IF EXISTS gender_type;
         DROP TYPE IF EXISTS user_role;
-        """
-    )
+    """)

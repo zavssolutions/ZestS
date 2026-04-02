@@ -1,4 +1,4 @@
-﻿from functools import lru_cache
+from functools import lru_cache
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     max_kids_per_parent: int = Field(default=3, alias="MAX_KIDS_PER_PARENT")
     admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
     celery_enabled: bool = Field(default=False, alias="CELERY_ENABLED")
+    reset_database: bool = Field(default=False, alias="RESET_DATABASE")
 
 
 @lru_cache

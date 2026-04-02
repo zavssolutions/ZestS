@@ -16,6 +16,8 @@ from app.core.logging import configure_logging
 from app.db.session import engine
 from alembic.config import Config
 from alembic import command
+import asyncio
+from reset_db import reset_database_cleanly
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,12 @@ def run_migrations():
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # run_migrations()
+    if settings.reset_database:
+        logger.warning("RESET_DATABASE is set to True. Starting database reset...")
+        await asyncio.to_thread(reset_database_cleanly)
+    
+    # Run migrations in a background thread to avoid blocking the event loop
+    await asyncio.to_thread(run_migrations)
     yield
 
 
