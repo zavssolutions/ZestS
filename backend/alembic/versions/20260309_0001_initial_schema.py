@@ -16,10 +16,13 @@ depends_on = None
 
 
 def upgrade() -> None:
+    print("DEBUG: Migration script - starting upgrade()")
     # 1. Extensions
+    print("DEBUG: Migration script - step 1: extensions")
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto;")
 
     # 2. Custom Types (Enums)
+    print("DEBUG: Migration script - step 2: types")
     op.execute("""
         DO $$
         BEGIN
@@ -42,6 +45,7 @@ def upgrade() -> None:
     """)
 
     # 3. Tables
+    print("DEBUG: Migration script - step 3: users table")
     op.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -320,6 +324,7 @@ def upgrade() -> None:
         ON CONFLICT (slug) DO NOTHING;
     """)
 
+    print("DEBUG: Migration script - step final: static page 2")
     op.execute("""
         INSERT INTO static_pages (slug, title, content)
         VALUES (
