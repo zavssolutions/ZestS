@@ -54,6 +54,7 @@ def run_migrations():
         print("DEBUG: Starting raw SQL fixes to complement SQLModel...")
         with engine.begin() as conn:
             # Fix users table
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sport VARCHAR(20) DEFAULT 'skating'"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
             
