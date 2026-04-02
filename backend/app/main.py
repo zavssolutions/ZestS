@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+import sys
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -113,13 +114,9 @@ async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     elapsed_ms = (time.time() - start) * 1000
-    logger.info(
-        "REQUEST %s %s -> %s (%.0fms)",
-        request.method,
-        request.url.path,
-        response.status_code,
-        elapsed_ms,
-    )
+    msg = f"REQUEST {request.method} {request.url.path} -> {response.status_code} ({elapsed_ms:.0f}ms)"
+    logger.info(msg)
+    print(msg) # Fail-safe print for Render logs
     return response
 
 
