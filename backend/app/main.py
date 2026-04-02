@@ -65,12 +65,23 @@ def run_migrations():
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    print(f"DEBUG: Lifespan starting. RESET_DATABASE={settings.reset_database}")
+    logger.info(f"Lifespan starting. RESET_DATABASE={settings.reset_database}")
+    
     if settings.reset_database:
+        print("DEBUG: Triggering reset_database_cleanly")
         logger.warning("RESET_DATABASE is set to True. Starting database reset...")
-        await asyncio.to_thread(reset_database_cleanly)
+        try:
+            await asyncio.to_thread(reset_database_cleanly)
+            print("DEBUG: Database reset completed successfully")
+        except Exception as e:
+            print(f"DEBUG: Database reset failed: {e}")
+            logger.error(f"Database reset failed: {e}")
     
     # Run migrations in a background thread to avoid blocking the event loop
+    print("DEBUG: Running migrations...")
     await asyncio.to_thread(run_migrations)
+    print("DEBUG: Migrations finished")
     yield
 
 
@@ -138,7 +149,8 @@ def root() -> dict:
     return {
         "message": "ZestS MVP API is running",
         "docs": f"{settings.api_v1_prefix}/docs",
-        "health": "/healthz"
+        "health": "/healthz",
+        "reset_database_enabled": settings.reset_database
     }
 
 @app.get("/healthz", tags=["system"])
