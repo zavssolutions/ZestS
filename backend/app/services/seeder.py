@@ -85,6 +85,7 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         
         org_prof = OrganizerProfile(
             user_id=org_user.id,
+            organizer_id=random.randint(100, 9999), # Manual ID to bypass sequence/not-null issues
             org_name="ZestS Official Massive Org",
             is_verified_org=True
         )

@@ -13,7 +13,7 @@ class EventCategoryCreate(BaseModel):
     age_group: Optional[str] = None
     track_type: Optional[str] = None
     distance: Optional[str] = None
-    gender_restriction: Optional[str] = None
+    gender: Optional[str] = None
     max_slots: int = 0
     price: float = 0
     images_url: Optional[list[str]] = None
@@ -95,7 +95,7 @@ class EventCategoryOut(BaseModel):
     age_group: Optional[str]
     track_type: Optional[str]
     distance: Optional[str]
-    gender_restriction: Optional[str]
+    gender: Optional[str] = None
     max_slots: int
     price: float
     images_url: Optional[list[str]]

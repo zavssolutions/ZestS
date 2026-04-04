@@ -90,7 +90,7 @@ class OrganizerProfile(SQLModel, table=True):
     user_id: UUID = Field(
         sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     )
-    organizer_id: Optional[int] = Field(default=None, sa_column=Column(Integer, autoincrement=True, unique=True))
+    organizer_id: Optional[int] = Field(default=None, sa_column=Column(Integer, autoincrement=True, unique=True, nullable=True))
     org_name: str = Field(sa_column=Column(String(120), nullable=False))
     website_url: Optional[str] = Field(default=None, max_length=255)
     is_verified_org: bool = Field(default=False)

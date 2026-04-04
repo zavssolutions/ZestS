@@ -113,13 +113,15 @@ def run_migrations():
             conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
             conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
             
-            # Fix organizer_profiles
+            # Fix organizer_profiles - ensure it's not strictly NOT NULL if we pass None
             conn.execute(text("""
                 DO $$
                 BEGIN
                     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organizer_profiles' AND column_name='organizer_id') THEN
                         ALTER TABLE organizer_profiles ADD COLUMN organizer_id SERIAL;
                         ALTER TABLE organizer_profiles ADD CONSTRAINT uq_organizer_id UNIQUE (organizer_id);
+                    ELSE
+                        ALTER TABLE organizer_profiles ALTER COLUMN organizer_id DROP NOT NULL;
                     END IF;
                 END $$;
             """))
@@ -141,6 +143,20 @@ def run_migrations():
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sport VARCHAR(20) DEFAULT 'skating'"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
+            
+            # Fix categories - ensure gender exists
+            conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='event_categories' AND column_name='gender') THEN
+                        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='event_categories' AND column_name='gender_restriction') THEN
+                            ALTER TABLE event_categories RENAME COLUMN gender_restriction TO gender;
+                        ELSE
+                            ALTER TABLE event_categories ADD COLUMN gender VARCHAR(30);
+                        END IF;
+                    END IF;
+                END $$;
+            """))
             
         print("DEBUG: Raw SQL fixes completed gracefully.")
         logger.info("Raw SQL fixes completed successfully.")
