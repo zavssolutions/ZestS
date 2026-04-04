@@ -667,3 +667,37 @@ def update_page(
     session.commit()
     _log_action(session, current_user.id, "update_page", "static_pages", None, {"slug": slug})
     return {"status": "ok", "slug": slug}
+
+
+@router.post("/debug/seed", response_model=dict)
+def populate_e2e_data(
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    num_skaters: int = Query(default=100),
+    num_parents: int = Query(default=10)
+) -> dict:
+    from app.services.seeder import seed_e2e_data
+    try:
+        result = seed_e2e_data(session, num_skaters=num_skaters, num_parents=num_parents)
+        _log_action(session, current_user.id, "debug_seed_data", "system", None, {"num_skaters": num_skaters})
+        return result
+    except Exception as e:
+        import traceback
+        error_detail = f"Seeder failed: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_detail)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Seed operation failed. Check server logs for full traceback. Error: {str(e)}"
+        )
+
+
+@router.post("/debug/clear", response_model=dict)
+def clear_all_test_data(
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    from app.services.seeder import clear_all_data
+    result = clear_all_data(session)
+    _log_action(session, current_user.id, "debug_clear_data", "system", None)
+    return result
+

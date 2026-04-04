@@ -85,6 +85,14 @@ def run_migrations():
             conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0"))
             
             # Add missing columns to event_categories table
+            conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='event_categories' AND column_name='gender_restriction') THEN
+                        ALTER TABLE event_categories RENAME COLUMN gender_restriction TO gender;
+                    END IF;
+                END $$;
+            """))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(60)"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS images_url JSON"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS other_urls JSON"))
@@ -106,18 +114,33 @@ def run_migrations():
             conn.execute(text("ALTER TABLE skater_profiles ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
             
             # Fix organizer_profiles
-            conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN IF NOT EXISTS organizer_id SERIAL UNIQUE"))
+            conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='organizer_profiles' AND column_name='organizer_id') THEN
+                        ALTER TABLE organizer_profiles ADD COLUMN organizer_id SERIAL;
+                        ALTER TABLE organizer_profiles ADD CONSTRAINT uq_organizer_id UNIQUE (organizer_id);
+                    END IF;
+                END $$;
+            """))
             conn.execute(text("ALTER TABLE organizer_profiles ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
             
             # Fix events
             conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer_id INTEGER"))
             conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer_user_id UUID"))
             
             # Fix event_categories
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(60)"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS images_url JSONB"))
             conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS other_urls JSONB"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0"))
+            
+            # Fix users - ensure columns match seeder
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS sport VARCHAR(20) DEFAULT 'skating'"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS age_group VARCHAR(60)"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS skate_type VARCHAR(60)"))
             
         print("DEBUG: Raw SQL fixes completed gracefully.")
         logger.info("Raw SQL fixes completed successfully.")

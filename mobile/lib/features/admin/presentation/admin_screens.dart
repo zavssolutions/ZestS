@@ -125,17 +125,24 @@ class AdminDashboardScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () => _populateMassiveData(context, ref),
+            onPressed: () => _populateE2EData(context, ref),
             icon: const Icon(Icons.data_thresholding),
-            label: const Text("Populate 10x10 Massive Data"),
+            label: const Text("Populate E2E Demo Data (100+ simulated users)"),
             style: OutlinedButton.styleFrom(foregroundColor: Colors.orange),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => _clearDatabaseRecords(context, ref),
+            icon: const Icon(Icons.delete_forever),
+            label: const Text("Clear All Database Records"),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _populateMassiveData(BuildContext context, WidgetRef ref) async {
+  Future<void> _populateE2EData(BuildContext context, WidgetRef ref) async {
     final dio = ref.read(dioProvider);
     try {
       showDialog(
@@ -144,43 +151,74 @@ class AdminDashboardScreen extends ConsumerWidget {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      for (int i = 1; i <= 10; i++) {
-        final categories = <Map<String, dynamic>>[];
-        for (int j = 1; j <= 10; j++) {
-          categories.add({
-            "name": "Massive Cat $j (Event $i)",
-            "price": 10.0 * j,
-            "category_type": "Road",
-            "skate_type": "Inline",
-            "age_group": "Under 15",
-            "distance": "${j}km",
-          });
-        }
-
-        await dio.post("/events", data: {
-          "title": "AVD Massive Event $i",
-          "description": "Populated via AVD script",
-          "organizer_email": "sivakumar.perumalla.lld01@gmail.com",
-          "price": 0.0,
-          "location_name": "AVD Stadium",
-          "venue_city": "AVD City",
-          "start_at_utc": DateTime.now().add(Duration(days: 30 + i)).toUtc().toIso8601String(),
-          "end_at_utc": DateTime.now().add(Duration(days: 30 + i, hours: 2)).toUtc().toIso8601String(),
-          "banner_image_url": "https://picsum.photos/seed/${i + 100}/800/400",
-          "categories": categories,
-        });
-      }
+      await dio.post("/admin/debug/seed");
 
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Successfully created 10 events with 10 categories each! (Total 100 entries)")),
+          const SnackBar(content: Text("Successfully generated Massive E2E Simulation Data!")),
         );
       }
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+        String message = e.toString();
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map && data.containsKey("detail")) {
+            message = data["detail"].toString();
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $message")));
+      }
+    }
+  }
+
+  Future<void> _clearDatabaseRecords(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Clear All Data?"),
+        content: const Text("This will brutally wipe ALL users, events, and results from the database. Are you absolutely sure?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Destructive Delete"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final dio = ref.read(dioProvider);
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      await dio.post("/admin/debug/clear");
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Database has been completely cleared of dynamic data.")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        String message = e.toString();
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map && data.containsKey("detail")) {
+            message = data["detail"].toString();
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error clearing data: $message")));
       }
     }
   }

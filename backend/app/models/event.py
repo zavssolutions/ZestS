@@ -59,7 +59,7 @@ class EventCategory(SQLModel, table=True):
     age_group: Optional[str] = Field(default=None, max_length=60)
     track_type: Optional[str] = Field(default=None, max_length=60)
     distance: Optional[str] = Field(default=None, max_length=30)
-    gender_restriction: Optional[str] = Field(default=None, max_length=30)
+    gender: Optional[str] = Field(default=None, max_length=30)
     max_slots: int = Field(default=0)
     price: float = Field(default=0, sa_column=Column(Numeric(10, 2), nullable=False))
     
