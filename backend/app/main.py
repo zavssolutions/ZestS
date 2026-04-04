@@ -76,6 +76,23 @@ def run_migrations():
             conn.execute(text("ALTER TABLE events ALTER COLUMN status TYPE VARCHAR(20) USING status::text"))
             conn.execute(text("ALTER TABLE events ALTER COLUMN status SET DEFAULT 'draft'"))
             
+            # Add missing columns to events table for data population
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer_id INTEGER"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS organizer_user_id UUID"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS images_url JSON"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS other_urls JSON"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
+            conn.execute(text("ALTER TABLE events ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2) DEFAULT 0"))
+            
+            # Add missing columns to event_categories table
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS category_type VARCHAR(60)"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS images_url JSON"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS other_urls JSON"))
+            conn.execute(text("ALTER TABLE event_categories ADD COLUMN IF NOT EXISTS city VARCHAR(100)"))
+            
+            # Add missing columns to banners
+            conn.execute(text("ALTER TABLE banners ADD COLUMN IF NOT EXISTS share_url VARCHAR(500)"))
+            
             conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status DROP DEFAULT"))
             conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status TYPE VARCHAR(20) USING status::text"))
             conn.execute(text("ALTER TABLE event_registrations ALTER COLUMN status SET DEFAULT 'pending'"))
