@@ -12,6 +12,7 @@ import "../../profile/data/profile_providers.dart";
 import "../../profile/data/profile_model.dart";
 import "../../../features/profile/data/kid_provider.dart";
 import "../../../core/constants.dart";
+import "../../admin/presentation/event_form_dialog.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({required this.eventId, super.key});
@@ -36,7 +37,47 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Event"),
-        actions: [
+          eventsAsync.when(
+            data: (events) {
+              final event = events.firstWhere((e) => e.id == widget.eventId);
+              final profile = profileAsync.value;
+              final isOrganizer = profile?.role == "organizer";
+              final isOwner = profile?.id == event.organizerUserId;
+              final isDraft = event.status == "draft";
+
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.category),
+                      tooltip: "Manage Categories",
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AdminEventCategoriesScreen(
+                            eventId: event.id,
+                            eventTitle: event.title,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      tooltip: "Edit Metadata",
+                      onPressed: () => showEventFormDialog(
+                        context,
+                        ref,
+                        event: event,
+                        onSuccess: () => ref.invalidate(upcomingEventsProvider),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            error: (_, __) => const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+          ),
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () async {

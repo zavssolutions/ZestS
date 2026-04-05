@@ -7,6 +7,8 @@ import "admin_debug_screen.dart";
 
 import "../../../core/api_client.dart";
 import "../../events/data/events_repository.dart";
+import "event_form_dialog.dart";
+import "../../events/data/event_model.dart";
 
 // ── Providers ──────────────────────────────────────────────────────
 
@@ -320,6 +322,7 @@ class AdminEventsScreen extends ConsumerWidget {
                       final isCanceled = status == "canceled";
                       return [
                         const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
+                        const PopupMenuItem(value: "edit", child: Text("Edit Event")),
                         if (status == "draft") const PopupMenuItem(value: "publish", child: Text("Publish")),
                         if (!isCanceled) const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
                         if (!isCanceled) const PopupMenuItem(value: "delete", child: Text("Delete")),
@@ -396,6 +399,10 @@ class AdminEventsScreen extends ConsumerWidget {
           ),
         );
         return;
+      } else if (action == "edit") {
+        final ev = EventModel.fromJson(event);
+        showEventFormDialog(context, ref, event: ev, onSuccess: () => ref.invalidate(adminEventsProvider));
+        return;
       }
       ref.invalidate(adminEventsProvider);
     } catch (e) {
@@ -405,313 +412,7 @@ class AdminEventsScreen extends ConsumerWidget {
   }
 
   void _showCreateEventDialog(BuildContext context, WidgetRef ref) {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final locationCtrl = TextEditingController();
-    final cityCtrl = TextEditingController();
-    final latCtrl = TextEditingController();
-    final lngCtrl = TextEditingController();
-    final organizerCtrl = TextEditingController();
-    final priceCtrl = TextEditingController(text: "0.0");
-    DateTime startDate = DateTime.now().add(const Duration(days: 30));
-    DateTime endDate = DateTime.now().add(const Duration(days: 31));
-
-    String? bannerUrl;
-    bool uploading = false;
-    final categories = <Map<String, dynamic>>[
-      {
-        "name": "Road Inline 500m 8-10",
-        "price": 0.0,
-        "category_type": "Road",
-        "skate_type": "Inline",
-        "distance": "500m",
-        "age_group": "8-10",
-      }
-    ];
-
-    final categoryTypes = ["Road", "Rink", "ICE", "Artistic"];
-    final skateTypes = ["Inline", "Quad", "toy inline", "tenacity"];
-    final distances = ["200m", "500m", "1000m"];
-    final ageGroups = ["4-6", "6-8", "8-10", "10-12", "12-15", "above 15"];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text("Create Event"),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: "Event Title")),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: "Description"), maxLines: 2),
-                
-                const SizedBox(height: 12),
-                const Text("Common Details", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.cyan)),
-                TextField(controller: organizerCtrl, decoration: const InputDecoration(labelText: "Organizer Email")),
-                TextField(
-                  controller: priceCtrl, 
-                  decoration: const InputDecoration(labelText: "Base Price (₹)"), 
-                  keyboardType: TextInputType.number,
-                  onChanged: (v) {
-                    final p = double.tryParse(v) ?? 0.0;
-                    setDialogState(() {
-                      for (var cat in categories) {
-                        cat["price"] = p;
-                      }
-                    });
-                  },
-                ),
-                
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text("Starts: ${startDate.toLocal().toString().split(' ')[0]}"),
-                  trailing: const Icon(Icons.calendar_month),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: ctx,
-                      initialDate: startDate,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (date != null) {
-                      setDialogState(() {
-                        startDate = date;
-                        if (endDate.isBefore(startDate)) {
-                          endDate = startDate.add(const Duration(hours: 2));
-                        }
-                      });
-                    }
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text("Ends: ${endDate.toLocal().toString().split(' ')[0]}"),
-                  trailing: const Icon(Icons.calendar_month),
-                  onTap: () async {
-                    // Fix: Reset endDate to startDate if it's before to avoid crash
-                    DateTime pickerInitialDate = endDate.isBefore(startDate) ? startDate : endDate;
-                    final date = await showDatePicker(
-                      context: ctx,
-                      initialDate: pickerInitialDate,
-                      firstDate: startDate,
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (date != null) setDialogState(() => endDate = date);
-                  },
-                ),
-
-                const SizedBox(height: 12),
-                TextField(controller: locationCtrl, decoration: const InputDecoration(labelText: "Location/Venue Name")),
-                TextField(controller: cityCtrl, decoration: const InputDecoration(labelText: "City")),
-                
-                const SizedBox(height: 12),
-                // ── Banner Image Picker ──
-                if (bannerUrl != null) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(bannerUrl!, height: 120, width: double.infinity, fit: BoxFit.cover),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                OutlinedButton.icon(
-                  onPressed: uploading
-                      ? null
-                      : () async {
-                          final picker = ImagePicker();
-                          final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-                          if (image == null) return;
-                          setDialogState(() => uploading = true);
-                          try {
-                            final formData = FormData.fromMap({
-                              "file": await MultipartFile.fromFile(image.path, filename: image.name),
-                            });
-                            final resp = await ref.read(dioProvider).post("/uploads/image", data: formData);
-                            setDialogState(() {
-                              bannerUrl = resp.data["url"];
-                              uploading = false;
-                            });
-                          } catch (e) {
-                            setDialogState(() => uploading = false);
-                            if (!ctx.mounted) return;
-                            ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Upload failed: $e")));
-                          }
-                        },
-                  icon: uploading
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.image),
-                  label: Text(uploading ? "Uploading..." : (bannerUrl != null ? "Change Image" : "Pick Banner Image")),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: latCtrl, decoration: const InputDecoration(labelText: "Lat"), keyboardType: TextInputType.number)),
-                    const SizedBox(width: 8),
-                    Expanded(child: TextField(controller: lngCtrl, decoration: const InputDecoration(labelText: "Lng"), keyboardType: TextInputType.number)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Divider(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Event Categories", style: TextStyle(fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline, color: Colors.cyan),
-                      onPressed: () {
-                        setDialogState(() {
-                          categories.add({
-                            "name": "Road Inline 500m 8-10", 
-                            "price": double.tryParse(priceCtrl.text) ?? 0.0,
-                            "category_type": "Road",
-                            "skate_type": "Inline",
-                            "distance": "500m",
-                            "age_group": "8-10",
-                          });
-                        });
-                      },
-                    ),
-                  ],
-                ),
-                ...categories.asMap().entries.map((entry) {
-                  final idx = entry.key;
-                  final cat = entry.value;
-                  return Card(
-                    margin: const EdgeInsets.only(top: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  cat["name"].isEmpty ? "New Category" : cat["name"],
-                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
-                                onPressed: () {
-                                  setDialogState(() {
-                                    categories.removeAt(idx);
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: cat["category_type"],
-                                  items: categoryTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() {
-                                    cat["category_type"] = v;
-                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
-                                  }),
-                                  decoration: const InputDecoration(labelText: "Cat Type"),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: cat["skate_type"],
-                                  items: skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() {
-                                    cat["skate_type"] = v;
-                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
-                                  }),
-                                  decoration: const InputDecoration(labelText: "Skate"),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: cat["distance"],
-                                  items: distances.map((d) => DropdownMenuItem(value: d, child: Text(d, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() {
-                                    cat["distance"] = v;
-                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
-                                  }),
-                                  decoration: const InputDecoration(labelText: "Distance"),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: cat["age_group"],
-                                  items: ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g, style: const TextStyle(fontSize: 12)))).toList(),
-                                  onChanged: (v) => setDialogState(() {
-                                    cat["age_group"] = v;
-                                    cat["name"] = "${cat["category_type"]} ${cat["skate_type"]} ${cat["distance"]} ${cat["age_group"]}";
-                                  }),
-                                  decoration: const InputDecoration(labelText: "Age"),
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextField(
-                            decoration: const InputDecoration(labelText: "Price for this Category (₹)"),
-                            keyboardType: TextInputType.number,
-                            onChanged: (v) => cat["price"] = double.tryParse(v) ?? 0.0,
-                            controller: TextEditingController(text: cat["price"].toString())..selection = TextSelection.collapsed(offset: cat["price"].toString().length),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-            FilledButton(
-              onPressed: () async {
-                try {
-                  await ref.read(dioProvider).post("/events", data: {
-                    "title": titleCtrl.text,
-                    "description": descCtrl.text,
-                    "organizer_email": organizerCtrl.text,
-                    "price": double.tryParse(priceCtrl.text) ?? 0.0,
-                    "location_name": locationCtrl.text,
-                    "venue_city": cityCtrl.text,
-                    "banner_image_url": bannerUrl,
-                    "latitude": double.tryParse(latCtrl.text),
-                    "longitude": double.tryParse(lngCtrl.text),
-                    "start_at_utc": startDate.toUtc().toIso8601String(),
-                    "end_at_utc": endDate.toUtc().toIso8601String(),
-                    "categories": categories.where((c) => (c["name"] as String).isNotEmpty).toList(),
-                  });
-                  ref.invalidate(adminEventsProvider);
-                  if (!ctx.mounted) return;
-                  Navigator.pop(ctx);
-                } catch (e) {
-                  if (ctx.mounted) {
-                    String msg = e.toString();
-                    if (e is DioException && e.response?.data != null) {
-                      msg = "Validation Error: ${e.response?.data}";
-                    }
-                    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                      content: Text("Failed to create event: $msg"),
-                      duration: const Duration(seconds: 10),
-                    ));
-                  }
-                }
-              },
-              child: const Text("Create Event (Draft)"),
-            ),
-          ],
-        ),
-      ),
-    );
+    showEventFormDialog(context, ref, onSuccess: () => ref.invalidate(adminEventsProvider));
   }
 }
 
@@ -747,6 +448,19 @@ class AdminEventCategoriesScreen extends ConsumerWidget {
               child: ListTile(
                 title: Text(c.name),
                 subtitle: Text("Price: ₹${c.price}"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: () => _showAddCategoryDialog(context, ref, category: c),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      onPressed: () => _deleteCategory(context, ref, c.id),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -757,9 +471,10 @@ class AdminEventCategoriesScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddCategoryDialog(BuildContext context, WidgetRef ref) {
-    final nameCtrl = TextEditingController();
-    final priceCtrl = TextEditingController();
+  void _showAddCategoryDialog(BuildContext context, WidgetRef ref, {EventCategoryModel? category}) {
+    final isEdit = category != null;
+    final nameCtrl = TextEditingController(text: category?.name);
+    final priceCtrl = TextEditingController(text: category?.price.toString());
 
     showDialog(
       context: context,
@@ -777,10 +492,15 @@ class AdminEventCategoriesScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () async {
               try {
-                await ref.read(dioProvider).post("/events/$eventId/categories", data: {
+                final data = {
                   "name": nameCtrl.text,
                   "price": double.tryParse(priceCtrl.text) ?? 0,
-                });
+                };
+                if (isEdit) {
+                  await ref.read(dioProvider).put("/events/$eventId/categories/${category.id}", data: data);
+                } else {
+                  await ref.read(dioProvider).post("/events/$eventId/categories", data: data);
+                }
                 ref.invalidate(eventCategoriesProvider(eventId));
                 if (!ctx.mounted) return;
                 Navigator.pop(ctx);
@@ -789,11 +509,38 @@ class AdminEventCategoriesScreen extends ConsumerWidget {
                 ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
               }
             },
-            child: const Text("Add"),
+            child: Text(isEdit ? "Update" : "Add"),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _deleteCategory(BuildContext context, WidgetRef ref, String categoryId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Category?"),
+        content: const Text("Are you sure? This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ref.read(dioProvider).delete("/events/$eventId/categories/$categoryId");
+      ref.invalidate(eventCategoriesProvider(eventId));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
+    }
   }
 }
 
@@ -852,25 +599,34 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                       ),
                       title: Text("${u["first_name"] ?? "No Name"} ${u["last_name"] ?? ""}"),
                       subtitle: Text("${u["role"]}${isKid ? " (Kid)" : ""} · ${u["email"] ?? u["mobile_no"] ?? "No contact"}"),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.red),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text("Delete User?"),
-                              content: const Text("This will remove all associated data. Continue?"),
-                              actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
-                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, Delete")),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
-                            ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
-                          }
-                        },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 20),
+                            onPressed: () => _showEditUserDialog(context, ref, u),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text("Delete User?"),
+                                  content: const Text("This will remove all associated data. Continue?"),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
+                                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, Delete")),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                await ref.read(dioProvider).delete("/admin/users/${u["id"]}");
+                                ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -881,6 +637,48 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditUserDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> user) {
+    String selectedRole = user["role"] ?? "parent";
+    final roles = ["parent", "organizer", "admin", "trainer", "skater", "kid"];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("Edit User Role"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("User: ${user["first_name"]} ${user["last_name"] ?? ""}"),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedRole,
+                items: roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                onChanged: (v) => setDialogState(() => selectedRole = v!),
+                decoration: const InputDecoration(labelText: "Role"),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await ref.read(dioProvider).put("/admin/users/${user["id"]}", data: {"role": selectedRole});
+                  ref.invalidate(adminUsersProvider(_search.isEmpty ? null : _search));
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (e) {
+                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+                }
+              },
+              child: const Text("Update"),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -913,12 +711,21 @@ class AdminBannersScreen extends ConsumerWidget {
                 child: ListTile(
                   title: Text(b["title"] ?? "Banner"),
                   subtitle: Text("Placement: ${b["placement"]} · Active: ${b["is_active"]}"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () async {
-                      await ref.read(dioProvider).delete("/admin/banners/${b["id"]}");
-                      ref.invalidate(adminBannersProvider);
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit, size: 20),
+                        onPressed: () => _showBannerDialog(context, ref, banner: b),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                        onPressed: () async {
+                          await ref.read(dioProvider).delete("/admin/banners/${b["id"]}");
+                          ref.invalidate(adminBannersProvider);
+                        },
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -932,8 +739,13 @@ class AdminBannersScreen extends ConsumerWidget {
   }
 
   void _showCreateBannerDialog(BuildContext context, WidgetRef ref) {
-    final titleCtrl = TextEditingController();
-    String? bannerUrl;
+    _showBannerDialog(context, ref);
+  }
+
+  void _showBannerDialog(BuildContext context, WidgetRef ref, {Map<String, dynamic>? banner}) {
+    final isEdit = banner != null;
+    final titleCtrl = TextEditingController(text: banner?["title"]);
+    String? bannerUrl = banner?["image_url"];
     bool uploading = false;
 
     showDialog(
@@ -988,18 +800,24 @@ class AdminBannersScreen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 try {
-                  await ref.read(dioProvider).post("/admin/banners", data: {
+                  final data = {
                     "title": titleCtrl.text,
                     "image_url": bannerUrl ?? "",
-                    "placement": "home_top",
-                  });
+                    "placement": banner?["placement"] ?? "home_top",
+                    "is_active": banner?["is_active"] ?? true,
+                  };
+                  if (isEdit) {
+                    await ref.read(dioProvider).put("/admin/banners/${banner["id"]}", data: data);
+                  } else {
+                    await ref.read(dioProvider).post("/admin/banners", data: data);
+                  }
                   ref.invalidate(adminBannersProvider);
                   if (ctx.mounted) Navigator.pop(ctx);
                 } catch (e) {
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
                 }
               },
-              child: const Text("Save"),
+              child: Text(isEdit ? "Update" : "Save"),
             ),
           ],
         ),
@@ -1031,12 +849,21 @@ class AdminSponsorsScreen extends ConsumerWidget {
             return ListTile(
               title: Text(s["name"] ?? ""),
               subtitle: Text(s["website_url"] ?? ""),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () async {
-                  await ref.read(dioProvider).delete("/admin/sponsors/${s["id"]}");
-                  ref.invalidate(adminSponsorsProvider);
-                },
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () => _showSponsorDialog(context, ref, sponsor: s),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () async {
+                      await ref.read(dioProvider).delete("/admin/sponsors/${s["id"]}");
+                      ref.invalidate(adminSponsorsProvider);
+                    },
+                  ),
+                ],
               ),
             );
           },
@@ -1048,8 +875,13 @@ class AdminSponsorsScreen extends ConsumerWidget {
   }
 
   void _showCreateSponsorDialog(BuildContext context, WidgetRef ref) {
-    final nameCtrl = TextEditingController();
-    final logoCtrl = TextEditingController();
+    _showSponsorDialog(context, ref);
+  }
+
+  void _showSponsorDialog(BuildContext context, WidgetRef ref, {Map<String, dynamic>? sponsor}) {
+    final isEdit = sponsor != null;
+    final nameCtrl = TextEditingController(text: sponsor?["name"]);
+    final logoCtrl = TextEditingController(text: sponsor?["logo_url"]);
 
     showDialog(
       context: context,
@@ -1103,6 +935,19 @@ class AdminResultsScreen extends ConsumerWidget {
                 leading: CircleAvatar(child: Text("#${r["rank"] ?? "-"}")),
                 title: Text("User: ${r["user_id"]?.toString().substring(0, 8) ?? ""}..."),
                 subtitle: Text("Points: ${r["points_earned"]} · Time: ${r["timing_ms"]}ms"),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: () => _showEditResultDialog(context, ref, r),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      onPressed: () => _deleteResult(context, ref, r["id"]),
+                    ),
+                  ],
+                ),
               );
             },
           );
@@ -1111,6 +956,72 @@ class AdminResultsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
     );
+  }
+
+  void _showEditResultDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> result) {
+    final rankCtrl = TextEditingController(text: result["rank"]?.toString());
+    final pointsCtrl = TextEditingController(text: result["points_earned"]?.toString());
+    final timeCtrl = TextEditingController(text: result["timing_ms"]?.toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Edit Result"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: rankCtrl, decoration: const InputDecoration(labelText: "Rank"), keyboardType: TextInputType.number),
+            TextField(controller: pointsCtrl, decoration: const InputDecoration(labelText: "Points"), keyboardType: TextInputType.number),
+            TextField(controller: timeCtrl, decoration: const InputDecoration(labelText: "Timing (ms)"), keyboardType: TextInputType.number),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ref.read(dioProvider).put("/admin/event-results/${result["id"]}", data: {
+                  "rank": int.tryParse(rankCtrl.text),
+                  "points_earned": int.tryParse(pointsCtrl.text),
+                  "timing_ms": int.tryParse(timeCtrl.text),
+                });
+                ref.invalidate(adminEventResultsProvider(null));
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
+            },
+            child: const Text("Update"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteResult(BuildContext context, WidgetRef ref, String resultId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete Result?"),
+        content: const Text("Are you sure? This result will be permanently removed."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      await ref.read(dioProvider).delete("/admin/event-results/$resultId");
+      ref.invalidate(adminEventResultsProvider(null));
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Delete failed: $e")));
+    }
   }
 }
 

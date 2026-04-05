@@ -21,6 +21,21 @@ class EventCategoryCreate(BaseModel):
     city: Optional[str] = None
 
 
+class EventCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    category_type: Optional[str] = None
+    skate_type: Optional[str] = None
+    age_group: Optional[str] = None
+    track_type: Optional[str] = None
+    distance: Optional[str] = None
+    gender: Optional[str] = None
+    max_slots: Optional[int] = None
+    price: Optional[float] = None
+    images_url: Optional[list[str]] = None
+    other_urls: Optional[dict[str, str]] = None
+    city: Optional[str] = None
+
+
 class EventCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
     title: str
@@ -107,6 +122,26 @@ class EventRegistrationCreate(BaseModel):
     event_id: UUID
     category_id: UUID
     user_id: Optional[UUID] = None
+
+
+class EventRegistrationUpdate(BaseModel):
+    category_id: Optional[UUID] = None
+    status: Optional[str] = None
+    payment_id: Optional[UUID] = None
+    from_city: Optional[str] = None
+
+
+class EventRegistrationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    event_id: UUID
+    category_id: UUID
+    user_id: UUID
+    payment_id: Optional[UUID]
+    status: str
+    from_city: Optional[str]
+    created_at: datetime
 
 
 class EventRegistrationBulkCreate(BaseModel):

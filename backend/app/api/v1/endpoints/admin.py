@@ -16,7 +16,8 @@ from app.models.audit import AuditLog
 from app.models.content import Banner, Sponsor, SupportIssue, SystemSetting, StaticPage
 from app.models.enums import UserRole
 from app.models.notification import Notification, DeviceToken
-from app.models.event import Event, EventRegistration, EventResult, Payment, Referral
+from app.models.event import Event, EventCategory, EventRegistration, EventResult, Payment, Referral
+from app.services.search_sync import sync_event
 from app.models.user import User, OrganizerProfile, ParentChildMapping, ParentProfile, TrainerProfile, SkaterProfile, DeletedUser
 from app.schemas.audit import AuditLogOut
 from app.schemas.content import (
@@ -28,7 +29,17 @@ from app.schemas.content import (
     SponsorUpdate,
     SupportIssueOut,
 )
-from app.schemas.event import EventOut, EventResultCreate, EventResultOut, EventResultUpdate, EventUpdate
+from app.schemas.event import (
+    EventOut,
+    EventUpdate,
+    EventResultCreate,
+    EventResultOut,
+    EventResultUpdate,
+    EventCategoryOut,
+    EventCategoryUpdate,
+    EventRegistrationOut,
+    EventRegistrationUpdate,
+)
 from app.schemas.user import UserAdminOut, UserUpdate
 from app.services.storage import upload_bytes
 
@@ -341,6 +352,13 @@ def update_event(
     session.add(event)
     session.commit()
     session.refresh(event)
+    
+    # Sync with Meilisearch
+    try:
+        sync_event(event)
+    except Exception as e:
+        logger.error(f"Search sync failed for event {event_id}: {e}")
+        
     _log_action(session, current_user.id, "update_event", "events", event_id, payload.model_dump())
     return event
 
@@ -375,6 +393,55 @@ def delete_event(
         raise HTTPException(status_code=500, detail=f"Failed to delete event: {e}\n{detail}")
         
     _log_action(session, current_user.id, "delete_event", "events", event_id)
+    return {"status": "ok"}
+
+
+@router.get("/event-categories/{category_id}", response_model=EventCategoryOut)
+def get_event_category(
+    category_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> EventCategory:
+    category = session.get(EventCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    return category
+
+
+@router.put("/event-categories/{category_id}", response_model=EventCategoryOut)
+def update_event_category(
+    category_id: UUID,
+    payload: EventCategoryUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> EventCategory:
+    category = session.get(EventCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(category, key, value)
+
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    _log_action(session, current_user.id, "update_category", "event_categories", category_id, payload.model_dump())
+    return category
+
+
+@router.delete("/event-categories/{category_id}", response_model=dict)
+def delete_event_category(
+    category_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> dict:
+    category = session.get(EventCategory, category_id)
+    if category is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+
+    session.delete(category)
+    session.commit()
+    _log_action(session, current_user.id, "delete_category", "event_categories", category_id)
     return {"status": "ok"}
 
 
@@ -631,6 +698,46 @@ def delete_event_result(
     session.commit()
     _log_action(session, current_user.id, "delete_event_result", "event_results", result_id)
     return {"status": "ok"}
+
+
+@router.get("/registrations", response_model=list[EventRegistrationOut])
+def list_registrations(
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+    event_id: Optional[UUID] = Query(default=None),
+    user_id: Optional[UUID] = Query(default=None),
+    limit: int = Query(default=100, le=500),
+) -> list[EventRegistration]:
+    statement = select(EventRegistration).limit(limit)
+    if event_id:
+        statement = statement.where(EventRegistration.event_id == event_id)
+    if user_id:
+        statement = statement.where(EventRegistration.user_id == user_id)
+
+    results = session.exec(statement).all()
+    _log_action(session, current_user.id, "list_registrations", "event_registrations")
+    return results
+
+
+@router.put("/registrations/{registration_id}", response_model=EventRegistrationOut)
+def update_registration(
+    registration_id: UUID,
+    payload: EventRegistrationUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN)),
+) -> EventRegistration:
+    registration = session.get(EventRegistration, registration_id)
+    if registration is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registration not found")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(registration, key, value)
+
+    session.add(registration)
+    session.commit()
+    session.refresh(registration)
+    _log_action(session, current_user.id, "update_registration", "event_registrations", registration_id, payload.model_dump())
+    return registration
 
 
 @router.get("/logs", response_model=list[AuditLogOut])

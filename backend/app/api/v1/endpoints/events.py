@@ -13,7 +13,9 @@ from app.models.event import Event, EventCategory, EventRegistration, Referral
 from app.models.user import User, OrganizerProfile, ParentChildMapping
 from app.schemas.event import (
     EventCreate,
+    EventUpdate,
     EventCategoryCreate,
+    EventCategoryUpdate,
     EventCategoryOut,
     EventOut,
     EventRegistrationBulkCreate,
@@ -123,6 +125,43 @@ def create_event(
         session.refresh(event)
         
     sync_event(event)
+    return event
+
+
+@router.put("/{event_id}", response_model=EventOut)
+def update_event(
+    event_id: UUID,
+    payload: EventUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+) -> Event:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    # If Organizer: must be owner AND status must be draft
+    if current_user.role == UserRole.ORGANIZER:
+        profile = session.get(OrganizerProfile, current_user.id)
+        if not profile or event.organizer_id != profile.organizer_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+        
+        if event.status != "draft":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Published events cannot be modified by organizers")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(event, key, value)
+    
+    event.updated_at = datetime.now(timezone.utc)
+    session.add(event)
+    session.commit()
+    session.refresh(event)
+    
+    # Sync search index
+    try:
+        sync_event(event)
+    except Exception as e:
+        print(f"DEBUG: Search sync failed for event {event.id}: {e}")
+        
     return event
 
 
@@ -322,6 +361,69 @@ def create_event_category(
     session.commit()
     session.refresh(category)
     return category
+
+
+@router.put("/{event_id}/categories/{category_id}", response_model=EventCategoryOut)
+def update_event_category(
+    event_id: UUID,
+    category_id: UUID,
+    payload: EventCategoryUpdate,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+) -> EventCategory:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+    
+    category = session.get(EventCategory, category_id)
+    if category is None or category.event_id != event.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found in this event")
+
+    # If Organizer: must be owner AND status must be draft
+    if current_user.role == UserRole.ORGANIZER:
+        profile = session.get(OrganizerProfile, current_user.id)
+        if not profile or event.organizer_id != profile.organizer_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+        
+        if event.status != "draft":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categories of published events cannot be modified by organizers")
+
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        setattr(category, key, value)
+    
+    session.add(category)
+    session.commit()
+    session.refresh(category)
+    return category
+
+
+@router.delete("/{event_id}/categories/{category_id}", response_model=dict)
+def delete_event_category(
+    event_id: UUID,
+    category_id: UUID,
+    session: SessionDep,
+    current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+) -> dict:
+    event = session.get(Event, event_id)
+    if event is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    category = session.get(EventCategory, category_id)
+    if category is None or category.event_id != event.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found in this event")
+
+    # If Organizer: must be owner AND status must be draft
+    if current_user.role == UserRole.ORGANIZER:
+        profile = session.get(OrganizerProfile, current_user.id)
+        if not profile or event.organizer_id != profile.organizer_id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+
+        if event.status != "draft":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Categories of published events cannot be deleted by organizers")
+
+    session.delete(category)
+    session.commit()
+    return {"status": "ok"}
 
 
 @router.post("/{event_id}/share-link", response_model=dict)

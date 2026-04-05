@@ -10,6 +10,9 @@ class EventModel {
     required this.bannerImageUrl,
     required this.latitude,
     required this.longitude,
+    required this.status,
+    this.organizerId,
+    this.organizerUserId,
   });
 
   final String id;
@@ -22,6 +25,9 @@ class EventModel {
   final String? bannerImageUrl;
   final double? latitude;
   final double? longitude;
+  final String status;
+  final int? organizerId;
+  final String? organizerUserId;
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
     return EventModel(
@@ -35,6 +41,9 @@ class EventModel {
       bannerImageUrl: json["banner_image_url"] as String?,
       latitude: (json["latitude"] as num?)?.toDouble(),
       longitude: (json["longitude"] as num?)?.toDouble(),
+      status: (json["status"] as String?) ?? "published",
+      organizerId: json["organizer_id"] as int?,
+      organizerUserId: json["organizer_user_id"] as String?,
     );
   }
 }
