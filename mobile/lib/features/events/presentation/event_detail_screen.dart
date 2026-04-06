@@ -151,7 +151,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                   child: const Text("Open in Maps"),
                 ),
               const SizedBox(height: 16),
-              _buildRegistrationSection(categoriesAsync, profileAsync, kidsAsync),
+              _buildRegistrationSection(categoriesAsync, profileAsync, kidsAsync, ref.watch(registrationsProvider)),
             ],
           );
         },
@@ -178,6 +178,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     AsyncValue<List<EventCategoryModel>> categoriesAsync,
     AsyncValue<ProfileModel?> profileAsync,
     AsyncValue<List<ProfileModel>> kidsAsync,
+    AsyncValue<List<RegistrationModel>> registrationsAsync,
   ) {
     return categoriesAsync.when(
       data: (categories) {
@@ -190,26 +191,38 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           children: [
             const Text("Select Categories", style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            ...categories.map((c) {
-              final isSelected = _selectedCategoryIds.contains(c.id);
-              return CheckboxListTile(
-                title: Text(c.name),
-                subtitle: Text("Price: ₹${c.price.toStringAsFixed(0)}"),
-                value: isSelected,
-                onChanged: (bool? value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedCategoryIds.add(c.id);
-                    } else {
-                      _selectedCategoryIds.remove(c.id);
-                    }
-                  });
-                },
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                dense: true,
-              );
-            }).toList(),
+            registrationsAsync.when(
+              data: (myRegs) {
+                return Column(
+                  children: categories.map((c) {
+                    final registered = myRegs.any((r) => r.categoryId == c.id && r.userId == (_selectedUserId ?? profileAsync.value?.id) && r.status != "cancelled");
+                    final isSelected = _selectedCategoryIds.contains(c.id) || registered;
+                    
+                    return CheckboxListTile(
+                      title: Text(c.name),
+                      subtitle: registered 
+                        ? const Text("Already Registered", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
+                        : Text("Price: ₹${c.price.toStringAsFixed(0)}"),
+                      value: isSelected,
+                      onChanged: registered ? null : (bool? value) {
+                        setState(() {
+                          if (value == true) {
+                            _selectedCategoryIds.add(c.id);
+                          } else {
+                            _selectedCategoryIds.remove(c.id);
+                          }
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, s) => Text("Error loading registrations: $e"),
+            ),
             const SizedBox(height: 8),
             profileAsync.when(
               data: (profile) {
@@ -294,14 +307,20 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Registration submitted successfuly!")),
                               );
+                              ref.invalidate(registrationsProvider);
                               // Optional: clear selection after success
                               setState(() => _selectedCategoryIds.clear());
                             }
                           } catch (e) {
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text("Registration failed: $e")),
-                              );
+                              final errorStr = e.toString();
+                              if (errorStr.contains("Already registered")) {
+                                _showAlreadyRegisteredDialog(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text("Registration failed: $e")),
+                                );
+                              }
                             }
                           }
                         },
@@ -328,6 +347,22 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       },
       error: (error, stackTrace) => const Text("Categories are not available right now."),
       loading: () => const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  void _showAlreadyRegisteredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Notice"),
+        content: const Text("Already registered, contact administrator."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
     );
   }
 }

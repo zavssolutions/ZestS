@@ -243,7 +243,7 @@ def register_event(payload: EventRegistrationCreate, current_user: CurrentUser, 
         session.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="User is already registered for this category",
+            detail="Already registered, contact administrator",
         )
     return {"message": "Registration successful", "registration_id": str(registration.id)}
 
@@ -310,6 +310,13 @@ def register_event_bulk(payload: EventRegistrationBulkCreate, current_user: Curr
         session.add(registration)
         registrations.append(registration)
 
+    duplicates_found = len(payload.category_ids) - len(registrations)
+    if len(registrations) == 0 and duplicates_found > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Already registered, contact administrator",
+        )
+
     session.commit()
     return {"message": f"Successfully registered for {len(registrations)} categories", "count": len(registrations)}
 
@@ -337,6 +344,7 @@ def list_my_registrations(current_user: CurrentUser, session: SessionDep) -> lis
                 "registration_id": str(reg.id),
                 "user_id": str(reg.user_id),
                 "user_name": name_map.get(reg.user_id, ""),
+                "category_id": str(reg.category_id),
                 "status": reg.status,
                 "event": EventOut.model_validate(event) if event else None,
             }
