@@ -253,10 +253,7 @@ class _HomePage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   const _SectionTitle("Tip of the day"),
                   tipWidget,
-                  const SizedBox(height: 16),
-                  const _SectionTitle("Dashboard"),
-                  const Card(child: ListTile(title: Text("Coming soon"))),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   _SectionTitle("Events (${events.length})"),
                 ]),
               ),
@@ -291,10 +288,7 @@ class _HomePage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   const _SectionTitle("Tip of the day"),
                   tipWidget,
-                  const SizedBox(height: 16),
-                  const _SectionTitle("Dashboard"),
-                  const Card(child: ListTile(title: Text("Coming soon"))),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   const _SectionTitle("Events"),
                   const Card(
                     child: ListTile(
