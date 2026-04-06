@@ -72,11 +72,11 @@ def populate_all():
 
         # 4. Banners
         print("Populating Banners...")
-        for i in range(100):
+        for i in range(5): # Limit to 5 for carousel testing
             b = Banner(
-                title=f"Banner {i}",
-                image_url=f"https://picsum.photos/seed/{i}/800/400",
-                link_url="https://example.com",
+                title=f"Welcome to ZestS {i+1}",
+                image_url="assets/images/zests_logo.png",
+                link_url="https://zests.app",
                 is_active=True,
                 display_order=i
             )

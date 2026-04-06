@@ -143,12 +143,20 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         session.commit()
         
         banner = Banner(
-            title="Welcome to the Mega E2E Run!",
-            image_url="https://picsum.photos/800/400",
+            title="Welcome to ZestS!",
+            image_url="assets/images/zests_logo.png",
             placement="home_top",
-            share_url=f"https://zests.app.link/massive_demo_{event.id}"
+            share_url=f"https://zests.app.link/home"
         )
         session.add(banner)
+
+        banner2 = Banner(
+            title="Register for upcoming championships!",
+            image_url="assets/images/zests_logo.png",
+            placement="home_top",
+            share_url=f"https://zests.app.link/events"
+        )
+        session.add(banner2)
         session.commit()
 
         # ==========================================

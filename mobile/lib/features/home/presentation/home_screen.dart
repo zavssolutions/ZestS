@@ -208,126 +208,12 @@ class _HomePage extends ConsumerWidget {
 
     final bannerWidget = bannersAsync.when(
       data: (banners) {
-        final banner = banners.isNotEmpty ? banners.first : null;
-        final bannerUrl = banner?.imageUrl ?? "assets/images/zests_logo.png";
-        final isAsset = bannerUrl.startsWith("assets/");
-
-        final shareText = banner != null
-            ? [
-                if ((banner.title ?? "").trim().isNotEmpty) banner.title!.trim(),
-                if ((banner.linkUrl ?? "").trim().isNotEmpty) banner.linkUrl!.trim(),
-                bannerUrl.trim(),
-            ].join("\n")
-            : "Check out ZestS!";
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            context.push(
-              "/banner",
-              extra: BannerViewArgs(
-                title: banner?.title?.trim().isNotEmpty == true ? banner!.title!.trim() : "ZestS",
-                image: isAsset ? bannerUrl : imageUrl(bannerUrl),
-                isAsset: isAsset,
-                deepLinkUrl: banner?.shareUrl ?? "https://zests.app.link/home",
-                shareText: shareText,
-              ),
-            );
-          },
-          child: Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: isAsset
-                    ? Image.asset(bannerUrl, height: 130, width: double.infinity, fit: BoxFit.contain)
-                    : CachedNetworkImage(
-                        imageUrl: imageUrl(bannerUrl),
-                        height: 130,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                        errorWidget: (context, url, error) => Image.asset(
-                          "assets/images/zests_logo.png",
-                          height: 130,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text("Compete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: IconButton.filledTonal(
-                  icon: const Icon(Icons.share, size: 20),
-                  onPressed: () {
-                    Share.share(shareText);
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
+        if (banners.isEmpty) {
+          return const _BannerCarousel(banners: []);
+        }
+        return _BannerCarousel(banners: banners);
       },
-      error: (error, _) => InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.push(
-          "/banner",
-          extra: const BannerViewArgs(
-            title: "ZestS",
-            image: "assets/images/zests_logo.png",
-            isAsset: true,
-            deepLinkUrl: "https://zests.app.link/home",
-            shareText: "Check out ZestS!",
-          ),
-        ),
-        child: Stack(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                "assets/images/zests_logo.png",
-                height: 130,
-                width: double.infinity,
-                fit: BoxFit.contain,
-              ),
-            ),
-            Positioned(
-              top: 8,
-              left: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text("Compete", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
-            Positioned(
-              bottom: 8,
-              right: 8,
-              child: IconButton.filledTonal(
-                icon: const Icon(Icons.share, size: 20),
-                onPressed: () {
-                  Share.share("Check out ZestS!\nhttps://zests.app.link/home");
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      error: (error, _) => const _BannerCarousel(banners: []),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
 
@@ -377,36 +263,8 @@ class _HomePage extends ConsumerWidget {
             ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final e = displayedEvents[index];
-                    return Card(
-                      child: ListTile(
-                        leading: e.bannerImageUrl != null && e.bannerImageUrl!.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: imageUrl(e.bannerImageUrl),
-                                width: 54,
-                                height: 54,
-                                fit: BoxFit.cover,
-                                errorWidget: (context, url, error) => Image.asset(
-                                  "assets/images/zests_logo.png",
-                                  width: 54,
-                                  height: 54,
-                                  fit: BoxFit.contain,
-                                ),
-                              )
-                            : const Icon(Icons.event),
-                        title: Text(e.title),
-                        subtitle: Text(
-                          "${DateFormat.yMMMd().add_jm().format(e.startAtUtc.toLocal())} - ${e.locationName}",
-                        ),
-                        onTap: () => context.push("/events/${e.id}"),
-                      ),
-                    );
-                  },
-                  childCount: displayedEvents.length,
-                ),
+              sliver: SliverToBoxAdapter(
+                child: _EventCarousel(events: displayedEvents),
               ),
             ),
             SliverPadding(
@@ -1326,6 +1184,300 @@ class _AdminNotificationsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text("Notifications")),
       body: const Center(
         child: Text("Notification management coming soon."),
+      ),
+    );
+  }
+}
+class _BannerCarousel extends StatefulWidget {
+  final List<BannerModel> banners;
+  const _BannerCarousel({required this.banners});
+
+  @override
+  State<_BannerCarousel> createState() => _BannerCarouselState();
+}
+
+class _BannerCarouselState extends State<_BannerCarousel> {
+  final PageController _controller = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.banners.isEmpty) {
+      return _buildSingleBanner(
+        title: "ZestS",
+        imageUrlPath: "assets/images/zests_logo.png",
+        isAsset: true,
+        shareText: "Check out ZestS!",
+        deepLinkUrl: "https://zests.app.link/home",
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 160,
+          child: PageView.builder(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            itemCount: widget.banners.length,
+            itemBuilder: (context, index) {
+              final b = widget.banners[index];
+              final isAsset = b.imageUrl.startsWith("assets/");
+              final shareText = [
+                if ((b.title ?? "").trim().isNotEmpty) b.title!.trim(),
+                if ((b.linkUrl ?? "").trim().isNotEmpty) b.linkUrl!.trim(),
+                b.imageUrl.trim(),
+              ].join("\n");
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildSingleBanner(
+                  title: b.title?.trim().isNotEmpty == true ? b.title!.trim() : "ZestS",
+                  imageUrlPath: b.imageUrl,
+                  isAsset: isAsset,
+                  shareText: shareText,
+                  deepLinkUrl: b.shareUrl ?? "https://zests.app.link/home",
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.banners.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.banners.length,
+                (index) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _currentPage == index ? Colors.cyan : Colors.grey.withAlpha(100),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSingleBanner({
+    required String title,
+    required String imageUrlPath,
+    required bool isAsset,
+    required String shareText,
+    required String deepLinkUrl,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        context.push(
+          "/banner",
+          extra: BannerViewArgs(
+            title: title,
+            image: isAsset ? imageUrlPath : imageUrl(imageUrlPath),
+            isAsset: isAsset,
+            deepLinkUrl: deepLinkUrl,
+            shareText: shareText,
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            children: [
+              isAsset
+                  ? Container(
+                      color: Colors.grey[100],
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: Image.asset(imageUrlPath, fit: BoxFit.contain),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: imageUrl(imageUrlPath),
+                      height: double.infinity,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) => Image.asset(
+                        "assets/images/zests_logo.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.black.withAlpha(150),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 48,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Positioned(
+                bottom: 4,
+                right: 4,
+                child: IconButton(
+                  icon: const Icon(Icons.share, color: Colors.white, size: 20),
+                  onPressed: () => Share.share(shareText),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EventCarousel extends StatelessWidget {
+  final List<EventModel> events;
+  const _EventCarousel({required this.events});
+
+  @override
+  Widget build(BuildContext context) {
+    if (events.isEmpty) {
+      return const Card(
+        child: ListTile(title: Text("No upcoming events")),
+      );
+    }
+
+    return SizedBox(
+      height: 220,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: events.length,
+        itemBuilder: (context, index) {
+          final e = events[index];
+          return Container(
+            width: 280,
+            margin: const EdgeInsets.only(right: 16, bottom: 8, top: 4),
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => context.push("/events/${e.id}"),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: e.bannerImageUrl != null && e.bannerImageUrl!.isNotEmpty
+                            ? CachedNetworkImage(
+                                imageUrl: imageUrl(e.bannerImageUrl),
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => _buildLogoPlaceholder(),
+                              )
+                            : _buildLogoPlaceholder(),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(
+                                  DateFormat.yMMMd().format(e.startAtUtc.toLocal()),
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    e.locationName,
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLogoPlaceholder() {
+    return Container(
+      color: Colors.grey[100],
+      width: double.infinity,
+      child: Center(
+        child: Image.asset(
+          "assets/images/zests_logo.png",
+          height: 60,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
