@@ -17,6 +17,7 @@ class RemoteConfigService {
     await instance.setDefaults(const {
       "phone_auth_enabled": false,
       "google_auth_enabled": true,
+      "email_auth_enabled": true,
       "minimum_version_android": "1.0.0",
       "minimum_version_ios": "1.0.0",
       "force_update_enabled": false,
@@ -33,6 +34,8 @@ class RemoteConfigService {
   bool get phoneAuthEnabled => _remoteConfig.getBool("phone_auth_enabled");
 
   bool get googleAuthEnabled => _remoteConfig.getBool("google_auth_enabled");
+  
+  bool get emailAuthEnabled => _remoteConfig.getBool("email_auth_enabled");
 
   Future<bool> isForceUpdateRequired() async {
     final info = await PackageInfo.fromPlatform();

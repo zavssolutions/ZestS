@@ -479,7 +479,7 @@ class AdminEventCategoriesScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Add Category"),
+        title: Text(isEdit ? "Edit Category" : "Add Category"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -752,7 +752,7 @@ class AdminBannersScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text("Create Banner"),
+          title: Text(isEdit ? "Edit Banner" : "Create Banner"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -886,7 +886,7 @@ class AdminSponsorsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Add Sponsor"),
+        title: Text(isEdit ? "Edit Sponsor" : "Add Sponsor"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -898,14 +898,23 @@ class AdminSponsorsScreen extends ConsumerWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           FilledButton(
             onPressed: () async {
-              await ref.read(dioProvider).post("/admin/sponsors", data: {
-                "name": nameCtrl.text,
-                "logo_url": logoCtrl.text,
-              });
-              ref.invalidate(adminSponsorsProvider);
-              if (ctx.mounted) Navigator.pop(ctx);
+              try {
+                final data = {
+                  "name": nameCtrl.text,
+                  "logo_url": logoCtrl.text,
+                };
+                if (isEdit) {
+                  await ref.read(dioProvider).put("/admin/sponsors/${sponsor["id"]}", data: data);
+                } else {
+                  await ref.read(dioProvider).post("/admin/sponsors", data: data);
+                }
+                ref.invalidate(adminSponsorsProvider);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+              }
             },
-            child: const Text("Save"),
+            child: Text(isEdit ? "Update" : "Save"),
           ),
         ],
       ),

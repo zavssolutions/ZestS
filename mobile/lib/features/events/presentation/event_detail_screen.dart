@@ -13,6 +13,7 @@ import "../../profile/data/profile_model.dart";
 import "../../../features/profile/data/kid_provider.dart";
 import "../../../core/constants.dart";
 import "../../admin/presentation/event_form_dialog.dart";
+import "../../admin/presentation/admin_screens.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({required this.eventId, super.key});
@@ -37,6 +38,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Event"),
+        actions: [
           eventsAsync.when(
             data: (events) {
               final event = events.firstWhere((e) => e.id == widget.eventId);
@@ -44,7 +46,8 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               final isOrganizer = profile?.role == "organizer";
               final isOwner = profile?.id == event.organizerUserId;
               final isDraft = event.status == "draft";
-
+              
+              if (isOrganizer && isOwner && isDraft) {
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -7,6 +7,7 @@ import "package:go_router/go_router.dart";
 
 import "../../features/auth/presentation/login_screen.dart";
 import "../../features/auth/presentation/phone_auth_screen.dart";
+import "../../features/auth/presentation/email_auth_screen.dart";
 import "../../features/events/presentation/event_detail_screen.dart";
 import "../../features/home/presentation/about_screen.dart";
 import "../../features/home/presentation/banner_view_screen.dart";
@@ -35,6 +36,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: "/onboarding", builder: (context, state) => const OnboardingScreen()),
       GoRoute(path: "/login", builder: (context, state) => const LoginScreen()),
       GoRoute(path: "/phone-auth", builder: (context, state) => const PhoneAuthScreen()),
+      GoRoute(path: "/email-auth", builder: (context, state) => const EmailAuthScreen()),
       GoRoute(path: "/home", builder: (context, state) => const HomeScreen()),
       GoRoute(path: "/profile", builder: (context, state) => const ProfileScreen()),
       GoRoute(path: "/support", builder: (context, state) => SupportScreen(prefilledMessage: state.extra as String?)),

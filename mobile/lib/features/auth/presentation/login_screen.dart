@@ -35,6 +35,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final phoneEnabled = remoteConfigAsync.valueOrNull?.phoneAuthEnabled ?? true;
     final googleEnabled = remoteConfigAsync.valueOrNull?.googleAuthEnabled ?? true;
+    final emailEnabled = remoteConfigAsync.valueOrNull?.emailAuthEnabled ?? true;
 
     return Scaffold(
       appBar: AppBar(title: const Text("Login")),
@@ -94,6 +95,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 OutlinedButton(
                   onPressed: !_acceptedTerms ? null : () => context.push("/phone-auth"),
                   child: const Text("Verify with Phone Number"),
+                ),
+              const SizedBox(height: 10),
+              if (emailEnabled)
+                OutlinedButton(
+                  onPressed: !_acceptedTerms ? null : () => context.push("/email-auth"),
+                  child: const Text("Continue with Email"),
                 ),
             ],
           ),
