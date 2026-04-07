@@ -33,6 +33,9 @@ class EventsRepository {
   }
 
   Future<List<RegistrationModel>> fetchMyRegistrations() async {
+    final token = _ref.read(authTokenStoreProvider).token;
+    if (token == null || token.isEmpty) return [];
+    
     final response = await _dio.get<List<dynamic>>("/events/registrations/me");
     final data = response.data ?? [];
     return compute(_parseRegistrations, data);
@@ -105,6 +108,8 @@ final upcomingEventsProvider = FutureProvider<List<EventModel>>((ref) async {
 });
 
 final registrationsProvider = FutureProvider<List<RegistrationModel>>((ref) async {
+  final token = ref.watch(authTokenStoreProvider).token;
+  if (token == null || token.isEmpty) return const [];
   return ref.watch(eventsRepositoryProvider).fetchMyRegistrations();
 });
 

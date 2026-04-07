@@ -86,17 +86,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         selectedIndex: selectedIndex,
         onDestinationSelected: (value) => setState(() => _tab = tabs[value]),
         destinations: [
-          if (isLoggedIn) _animatedDestination(0, Icons.dashboard_outlined, "MyDashboard"),
-          _animatedDestination(isLoggedIn ? 1 : 0, Icons.search, "Search"),
-          _animatedDestination(isLoggedIn ? 2 : 1, Icons.calendar_month, "MySchedule"),
-          _animatedDestination(isLoggedIn ? 3 : 2, Icons.home_filled, "Home"),
+          if (isLoggedIn) _animatedDestination(_HomeTab.dashboard, Icons.dashboard_outlined, "MyDashboard"),
+          _animatedDestination(_HomeTab.search, Icons.search, "Search"),
+          _animatedDestination(_HomeTab.schedule, Icons.calendar_month, "MySchedule"),
+          _animatedDestination(_HomeTab.home, Icons.home_filled, "Home"),
         ],
       ),
     );
   }
 
-  NavigationDestination _animatedDestination(int index, IconData icon, String label) {
-    final selected = _tab == index;
+  NavigationDestination _animatedDestination(_HomeTab tab, IconData icon, String label) {
+    final selected = _tab == tab;
     return NavigationDestination(
       icon: AnimatedScale(
         duration: const Duration(milliseconds: 180),
@@ -195,6 +195,24 @@ class _HomeDrawer extends ConsumerWidget {
   }
 }
 
+final List<EventModel> _skeletonEvents = List.generate(
+  3,
+  (i) => EventModel(
+    id: "skeleton_$i",
+    title: "Loading Event Name...",
+    description: "Loading description...",
+    locationName: "Loading location...",
+    venueCity: "City",
+    startAtUtc: DateTime.now(),
+    endAtUtc: DateTime.now().add(const Duration(hours: 2)),
+    bannerImageUrl: null,
+    latitude: null,
+    longitude: null,
+    status: "published",
+    price: 0,
+  ),
+);
+
 class _HomePage extends ConsumerWidget {
   const _HomePage();
 
@@ -214,7 +232,10 @@ class _HomePage extends ConsumerWidget {
         return _BannerCarousel(banners: banners);
       },
       error: (error, _) => const _BannerCarousel(banners: []),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const SizedBox(
+        height: 160,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     );
 
     final tipWidget = tipAsync.when(
@@ -240,78 +261,67 @@ class _HomePage extends ConsumerWidget {
       loading: () => const Card(child: ListTile(title: Text("Loading tip..."))),
     );
 
-    return eventsAsync.when(
-      data: (events) {
-        final displayedEvents = isLoggedIn ? events : events.take(1).toList();
-        return CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  bannerWidget,
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Tip of the day"),
-                  tipWidget,
-                  const SizedBox(height: 12),
-                  _SectionTitle("Events (${events.length})"),
-                ]),
+    final List<EventModel> events = eventsAsync.valueOrNull ?? [];
+    final displayedEvents = isLoggedIn ? events : events.take(1).toList();
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              bannerWidget,
+              const SizedBox(height: 12),
+              const _SectionTitle("Tip of the day"),
+              tipWidget,
+              const SizedBox(height: 12),
+              eventsAsync.when(
+                data: (e) => _SectionTitle("Events (${e.length})"),
+                loading: () => const _SectionTitle("Events"),
+                error: (_, __) => const _SectionTitle("Events"),
               ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverToBoxAdapter(
-                child: _EventCarousel(events: displayedEvents),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Leaderboard"),
-                  const Card(child: ListTile(title: Text("Top skaters this week"))),
-                ]),
-              ),
-            ),
-          ],
-        );
-      },
-      error: (error, stackTrace) {
-        return CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  bannerWidget,
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Tip of the day"),
-                  tipWidget,
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Events"),
-                  const Card(
-                    child: ListTile(
-                      title: Text("Events are not available right now."),
-                      subtitle: Text("Please try again in a little while."),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const _SectionTitle("Leaderboard"),
-                  const Card(child: ListTile(title: Text("Top skaters this week"))),
-                ]),
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => Skeletonizer(
-        enabled: true,
-        child: ListView.builder(
-          itemCount: 8,
-          itemBuilder: (context, index) => const Card(child: ListTile(title: Text("Loading"))),
+            ]),
+          ),
         ),
-      ),
+        eventsAsync.when(
+          data: (e) => SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(
+              child: _EventCarousel(events: displayedEvents),
+            ),
+          ),
+          loading: () => SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(
+              child: Skeletonizer(
+                enabled: true,
+                child: _EventCarousel(events: _skeletonEvents),
+              ),
+            ),
+          ),
+          error: (error, _) => SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(
+              child: Card(
+                child: ListTile(
+                  title: const Text("Events are not available right now."),
+                  subtitle: const Text("Please try again in a little while."),
+                ),
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              const SizedBox(height: 12),
+              const _SectionTitle("Leaderboard"),
+              const Card(child: ListTile(title: Text("Top skaters this week"))),
+            ]),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1203,12 +1213,15 @@ class _BannerCarouselState extends State<_BannerCarousel> {
   @override
   Widget build(BuildContext context) {
     if (widget.banners.isEmpty) {
-      return _buildSingleBanner(
-        title: "ZestS",
-        imageUrlPath: "assets/images/zests_logo.png",
-        isAsset: true,
-        shareText: "Check out ZestS!",
-        deepLinkUrl: "https://zests.app.link/home",
+      return SizedBox(
+        height: 160,
+        child: _buildSingleBanner(
+          title: "ZestS",
+          imageUrlPath: "assets/images/zests_logo.png",
+          isAsset: true,
+          shareText: "Check out ZestS!",
+          deepLinkUrl: "https://zests.app.link/home",
+        ),
       );
     }
 
@@ -1410,35 +1423,43 @@ class _EventCarousel extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                      flex: 3,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Text(
                               e.title,
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
+                          ),
+                          const SizedBox(height: 2),
+                          Flexible(
+                            child: Row(
                               children: [
                                 const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
                                 const SizedBox(width: 4),
-                                Text(
-                                  DateFormat.yMMMd().format(e.startAtUtc.toLocal()),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                Flexible(
+                                  child: Text(
+                                    DateFormat.yMMMd().format(e.startAtUtc.toLocal()),
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 2),
-                            Row(
+                          ),
+                          const SizedBox(height: 2),
+                          Flexible(
+                            child: Row(
                               children: [
                                 const Icon(Icons.location_on, size: 14, color: Colors.grey),
                                 const SizedBox(width: 4),
-                                Expanded(
+                                Flexible(
                                   child: Text(
                                     e.locationName,
                                     style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -1448,8 +1469,8 @@ class _EventCarousel extends StatelessWidget {
                                 ),
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
