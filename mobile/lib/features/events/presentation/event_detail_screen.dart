@@ -11,7 +11,9 @@ import "../data/events_repository.dart";
 import "../../profile/data/profile_providers.dart";
 import "../../profile/data/profile_model.dart";
 import "../../../features/profile/data/kid_provider.dart";
+import "../../../core/constants.dart";
 import "../../admin/presentation/admin_screens.dart";
+import "../../admin/presentation/event_form_dialog.dart";
 import "../../home/presentation/home_screen.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {

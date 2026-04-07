@@ -505,6 +505,7 @@ class _KidDetailsView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(cachedProfileProvider).valueOrNull?.role == "admin";
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -534,15 +535,17 @@ class _KidDetailsView extends ConsumerWidget {
                   color: Colors.purple,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  label: "Rank",
-                  value: "-",
-                  icon: Icons.leaderboard,
-                  color: Colors.cyan,
+              if (isAdmin) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: "Rank",
+                    value: "-",
+                    icon: Icons.leaderboard,
+                    color: Colors.cyan,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
@@ -592,6 +595,7 @@ class _SkaterDashboard extends ConsumerWidget {
   const _SkaterDashboard();
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(cachedProfileProvider).valueOrNull?.role == "admin";
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -602,7 +606,7 @@ class _SkaterDashboard extends ConsumerWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: _StatCard(
@@ -612,15 +616,17 @@ class _SkaterDashboard extends ConsumerWidget {
                   color: Colors.purple,
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  label: "My Rank",
-                  value: "-",
-                  icon: Icons.leaderboard,
-                  color: Colors.cyan,
+              if (isAdmin) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: "My Rank",
+                    value: "-",
+                    icon: Icons.leaderboard,
+                    color: Colors.cyan,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 24),
@@ -643,12 +649,13 @@ class _SkaterDashboard extends ConsumerWidget {
                 color: Colors.amber,
                 onTap: () {},
               ),
-              _DashboardActionCard(
-                title: "Leaderboard",
-                icon: Icons.assessment,
-                color: Colors.blue,
-                onTap: () {},
-              ),
+              if (isAdmin)
+                _DashboardActionCard(
+                  title: "Leaderboard",
+                  icon: Icons.assessment,
+                  color: Colors.blue,
+                  onTap: () {},
+                ),
               _DashboardActionCard(
                 title: "Refer & Earn",
                 icon: Icons.share,
@@ -663,10 +670,10 @@ class _SkaterDashboard extends ConsumerWidget {
   }
 }
 
-class _AdminDashboard extends StatelessWidget {
+class _AdminDashboard extends ConsumerWidget {
   const _AdminDashboard();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -728,10 +735,11 @@ class _AdminDashboard extends StatelessWidget {
   }
 }
 
-class _OrganizerDashboard extends StatelessWidget {
+class _OrganizerDashboard extends ConsumerWidget {
   const _OrganizerDashboard();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(cachedProfileProvider).valueOrNull?.role == "admin";
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -742,7 +750,7 @@ class _OrganizerDashboard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: _StatCard(label: "My Events", value: "...", icon: Icons.event, color: Colors.blue),
@@ -793,10 +801,11 @@ class _OrganizerDashboard extends StatelessWidget {
   }
 }
 
-class _SponsorDashboard extends StatelessWidget {
+class _SponsorDashboard extends ConsumerWidget {
   const _SponsorDashboard();
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAdmin = ref.watch(cachedProfileProvider).valueOrNull?.role == "admin";
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -807,7 +816,7 @@ class _SponsorDashboard extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: _StatCard(label: "Brand Reach", value: "...", icon: Icons.trending_up, color: Colors.indigo),
@@ -832,12 +841,13 @@ class _SponsorDashboard extends StatelessWidget {
                 color: Colors.blue,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminEventsScreen())),
               ),
-              _DashboardActionCard(
-                title: "Leaderboard",
-                icon: Icons.emoji_events,
-                color: Colors.amber,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminResultsScreen())),
-              ),
+              if (isAdmin)
+                _DashboardActionCard(
+                  title: "Leaderboard",
+                  icon: Icons.emoji_events,
+                  color: Colors.amber,
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminResultsScreen())),
+                ),
               _DashboardActionCard(
                 title: "Sponsorship",
                 icon: Icons.handshake,
