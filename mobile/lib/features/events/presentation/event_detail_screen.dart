@@ -11,9 +11,8 @@ import "../data/events_repository.dart";
 import "../../profile/data/profile_providers.dart";
 import "../../profile/data/profile_model.dart";
 import "../../../features/profile/data/kid_provider.dart";
-import "../../../core/constants.dart";
-import "../../admin/presentation/event_form_dialog.dart";
 import "../../admin/presentation/admin_screens.dart";
+import "../../home/presentation/home_screen.dart";
 
 class EventDetailScreen extends ConsumerStatefulWidget {
   const EventDetailScreen({required this.eventId, super.key});
@@ -308,8 +307,11 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                                 const SnackBar(content: Text("Registration submitted successfuly!")),
                               );
                               ref.invalidate(registrationsProvider);
-                              // Optional: clear selection after success
-                              setState(() => _selectedCategoryIds.clear());
+                              // Navigation to My Schedule
+                              ref.read(homeTabProvider.notifier).state = HomeTab.schedule;
+                              if (context.mounted) {
+                                context.go("/home");
+                              }
                             }
                           } catch (e) {
                             if (mounted) {

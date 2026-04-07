@@ -101,12 +101,14 @@ class RegistrationModel {
     required this.categoryId,
     required this.status,
     required this.event,
+    this.categoryName,
   });
 
   final String registrationId;
   final String userId;
   final String userName;
   final String categoryId;
+  final String? categoryName;
   final String status;
   final EventModel? event;
 
@@ -118,6 +120,7 @@ class RegistrationModel {
       userName: (json["user_name"] as String?) ?? "",
       categoryId: (json["category_id"] as String?) ?? "",
       status: (json["status"] as String?) ?? "pending",
+      categoryName: json["category_name"] as String?,
       event: eventJson == null ? null : EventModel.fromJson(eventJson),
     );
   }

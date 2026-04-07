@@ -20,7 +20,9 @@ import "../../../features/admin/presentation/admin_screens.dart";
 import "../../../features/profile/data/kid_provider.dart";
 import "../../../core/constants.dart";
 
-enum _HomeTab { dashboard, search, schedule, home }
+enum HomeTab { dashboard, search, schedule, home }
+
+final homeTabProvider = StateProvider<HomeTab>((ref) => HomeTab.home);
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -30,30 +32,31 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  _HomeTab _tab = _HomeTab.home;
 
   @override
   Widget build(BuildContext context) {
     final pointsAsync = ref.watch(userPointsProvider);
-    final isLoggedIn = ref.watch(cachedProfileProvider).valueOrNull != null;
+    final profileAsync = ref.watch(cachedProfileProvider);
+    final isLoggedIn = profileAsync.valueOrNull != null;
+    final currentTab = ref.watch(homeTabProvider);
     final tabs = isLoggedIn
-        ? const <_HomeTab>[_HomeTab.dashboard, _HomeTab.search, _HomeTab.schedule, _HomeTab.home]
-        : const <_HomeTab>[_HomeTab.search, _HomeTab.schedule, _HomeTab.home];
-    final selectedTab = tabs.contains(_tab) ? _tab : _HomeTab.home;
+        ? const <HomeTab>[HomeTab.dashboard, HomeTab.search, HomeTab.schedule, HomeTab.home]
+        : const <HomeTab>[HomeTab.search, HomeTab.schedule, HomeTab.home];
+    final selectedTab = tabs.contains(currentTab) ? currentTab : HomeTab.home;
     final selectedIndex = tabs.indexOf(selectedTab);
 
     Widget body;
     switch (selectedTab) {
-      case _HomeTab.dashboard:
+      case HomeTab.dashboard:
         body = const _DashboardPage();
         break;
-      case _HomeTab.search:
+      case HomeTab.search:
         body = const _SearchPage();
         break;
-      case _HomeTab.schedule:
+      case HomeTab.schedule:
         body = const _SchedulePage();
         break;
-      case _HomeTab.home:
+      case HomeTab.home:
         body = const _HomePage();
         break;
     }
@@ -84,19 +87,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: body,
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-        onDestinationSelected: (value) => setState(() => _tab = tabs[value]),
+        onDestinationSelected: (value) => ref.read(homeTabProvider.notifier).state = tabs[value],
         destinations: [
-          if (isLoggedIn) _animatedDestination(_HomeTab.dashboard, Icons.dashboard_outlined, "MyDashboard"),
-          _animatedDestination(_HomeTab.search, Icons.search, "Search"),
-          _animatedDestination(_HomeTab.schedule, Icons.calendar_month, "MySchedule"),
-          _animatedDestination(_HomeTab.home, Icons.home_filled, "Home"),
+          if (isLoggedIn) _animatedDestination(HomeTab.dashboard, Icons.dashboard_outlined, "MyDashboard"),
+          _animatedDestination(HomeTab.search, Icons.search, "Search"),
+          _animatedDestination(HomeTab.schedule, Icons.calendar_month, "MySchedule"),
+          _animatedDestination(HomeTab.home, Icons.home_filled, "Home"),
         ],
       ),
     );
   }
 
-  NavigationDestination _animatedDestination(_HomeTab tab, IconData icon, String label) {
-    final selected = _tab == tab;
+  NavigationDestination _animatedDestination(HomeTab tab, IconData icon, String label) {
+    final selected = ref.watch(homeTabProvider) == tab;
     return NavigationDestination(
       icon: AnimatedScale(
         duration: const Duration(milliseconds: 180),
@@ -926,7 +929,9 @@ class _SchedulePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(cachedProfileProvider);
+    final kidsAsync = ref.watch(kidsProvider);
     final registrationsAsync = ref.watch(registrationsProvider);
+    final selectedKidId = ref.watch(selectedKidProvider);
 
     if (profileAsync.valueOrNull == null) {
       return Center(
@@ -944,43 +949,172 @@ class _SchedulePage extends ConsumerWidget {
       );
     }
 
-    return registrationsAsync.when(
-      data: (registrations) {
-        if (registrations.isEmpty) {
-          return const Center(child: Text("No scheduled events yet"));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: registrations.length,
-          itemBuilder: (context, index) {
-            final r = registrations[index];
-            return Card(
-              child: ListTile(
-                title: Text(r.event?.title ?? "Event"),
-                subtitle: Text("${r.userName} · ${r.status}"),
+    final parent = profileAsync.value!;
+    final allProfiles = [parent, ...kidsAsync.valueOrNull ?? []];
+
+    return Column(
+      children: [
+        if (parent.role == "parent") ...[
+          _HorizontalKidSwitcher(kids: kidsAsync.valueOrNull ?? []),
+          const Divider(height: 1),
+        ],
+        Expanded(
+          child: registrationsAsync.when(
+            data: (registrations) {
+              // Filter by selected kid if parent role
+              final filteredRegistrations = parent.role == "parent" && selectedKidId != null
+                  ? registrations.where((r) => r.userId == selectedKidId).toList()
+                  : registrations;
+
+              if (filteredRegistrations.isEmpty) {
+                return const Center(child: Text("No scheduled events for this profile"));
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: filteredRegistrations.length + 1, // +1 for the header note
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.amber.shade900),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              "Meet Zest representative at Venue",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final r = filteredRegistrations[index - 1];
+                  final event = r.event;
+                  if (event == null) return const SizedBox.shrink();
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  event.title,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.cyan.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  r.categoryName ?? "Registration",
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.cyan),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          _IconTextRow(
+                            icon: Icons.calendar_today,
+                            text: DateFormat.yMMMd().add_jm().format(event.startAtUtc.toLocal()),
+                          ),
+                          const SizedBox(height: 8),
+                          _IconTextRow(
+                            icon: Icons.location_on_outlined,
+                            text: "${event.locationName}${event.venueCity != null ? ", ${event.venueCity}" : ""}",
+                          ),
+                          const SizedBox(height: 8),
+                          _IconTextRow(
+                            icon: Icons.person_outline,
+                            text: r.userName,
+                          ),
+                          const Divider(height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                "Status: ${r.status.toUpperCase()}",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: r.status == "confirmed" ? Colors.green : Colors.orange,
+                                ),
+                              ),
+                              const Icon(Icons.qr_code, size: 20, color: Colors.grey),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            error: (error, stackTrace) => Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text("We couldn't load your schedule."),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: () => ref.invalidate(registrationsProvider),
+                      child: const Text("Retry"),
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
-        );
-      },
-      error: (error, stackTrace) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("We couldn't load your schedule."),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () => ref.invalidate(registrationsProvider),
-                child: const Text("Retry"),
-              ),
-            ],
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
           ),
         ),
-      ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      ],
+    );
+  }
+}
+
+class _IconTextRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _IconTextRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade600),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
+          ),
+        ),
+      ],
     );
   }
 }
