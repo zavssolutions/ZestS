@@ -1087,8 +1087,7 @@ class _SectionTitle extends StatelessWidget {
 }
 
 Future<void> _showAddKidDialog(BuildContext context, WidgetRef ref) async {
-  final firstController = TextEditingController();
-  final lastController = TextEditingController();
+  final nameController = TextEditingController();
   DateTime? dob;
   String gender = "unspecified";
 
@@ -1103,12 +1102,8 @@ Future<void> _showAddKidDialog(BuildContext context, WidgetRef ref) async {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
-                  controller: firstController,
-                  decoration: const InputDecoration(labelText: "First name"),
-                ),
-                TextField(
-                  controller: lastController,
-                  decoration: const InputDecoration(labelText: "Last name"),
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: "Full Name"),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
@@ -1144,18 +1139,17 @@ Future<void> _showAddKidDialog(BuildContext context, WidgetRef ref) async {
               TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
               FilledButton(
                 onPressed: () async {
-                  final first = firstController.text.trim();
-                  final last = lastController.text.trim();
-                  if (first.isEmpty || dob == null) {
+                  final fullName = nameController.text.trim();
+                  if (fullName.isEmpty || dob == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("First name and DOB are required")),
+                      const SnackBar(content: Text("Full name and DOB are required")),
                     );
                     return;
                   }
                   try {
                     await ref.read(profileRepositoryProvider).addKid(
-                          firstName: first,
-                          lastName: last,
+                          firstName: fullName,
+                          lastName: "",
                           dob: dob!,
                           gender: gender,
                         );

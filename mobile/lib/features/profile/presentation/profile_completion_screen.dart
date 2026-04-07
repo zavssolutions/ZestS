@@ -13,8 +13,7 @@ class ProfileCompletionScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScreen> {
-  final _firstNameController = TextEditingController();
-  final _lastNameController = TextEditingController();
+  final _fullNameController = TextEditingController();
   
   // Trainer
   final _schoolNameController = TextEditingController();
@@ -53,11 +52,10 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
 
   Future<void> _submit() async {
     if (_saving) return;
-    final first = _firstNameController.text.trim();
-    final last = _lastNameController.text.trim();
-    if (first.isEmpty) {
+    final fullName = _fullNameController.text.trim();
+    if (fullName.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("First name is required")),
+        const SnackBar(content: Text("Full name is required")),
       );
       return;
     }
@@ -85,9 +83,9 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
       }
       for (var i = 0; i < _kids.length; i++) {
         final kid = _kids[i];
-        if (kid.firstNameController.text.trim().isEmpty) {
+        if (kid.nameController.text.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Kid ${i + 1}'s first name is required")),
+            SnackBar(content: Text("Kid ${i + 1}'s full name is required")),
           );
           return;
         }
@@ -103,8 +101,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
     setState(() => _saving = true);
     try {
       await ref.read(profileRepositoryProvider).updateProfile(
-            firstName: first,
-            lastName: last,
+            firstName: fullName,
+            lastName: "",
             dob: _dob,
             role: _role,
             schoolName: _role == "trainer" || _role == "skater" ? _schoolNameController.text.trim() : null,
@@ -123,8 +121,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
       if (_role == "parent") {
         for (final kid in _kids) {
           await ref.read(profileRepositoryProvider).addKid(
-                firstName: kid.firstNameController.text.trim(),
-                lastName: kid.lastNameController.text.trim(),
+                firstName: kid.nameController.text.trim(),
+                lastName: "",
                 dob: kid.dob!,
                 gender: kid.gender,
                 skateType: kid.skateType,
@@ -192,13 +190,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             ),
             const SizedBox(height: 16),
             TextField(
-              controller: _firstNameController,
-              decoration: const InputDecoration(labelText: "First name"),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _lastNameController,
-              decoration: const InputDecoration(labelText: "Last name"),
+              controller: _fullNameController,
+              decoration: const InputDecoration(labelText: "Full Name"),
             ),
             const SizedBox(height: 12),
             OutlinedButton(
@@ -247,13 +240,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                           ],
                         ),
                         TextField(
-                          controller: kid.firstNameController,
-                          decoration: const InputDecoration(labelText: "Kid's First name *"),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: kid.lastNameController,
-                          decoration: const InputDecoration(labelText: "Kid's Last name (optional)"),
+                          controller: kid.nameController,
+                          decoration: const InputDecoration(labelText: "Kid's Full Name *"),
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton(
@@ -376,8 +364,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
 }
 
 class _KidFormModel {
-  final firstNameController = TextEditingController();
-  final lastNameController = TextEditingController();
+  final nameController = TextEditingController();
   DateTime? dob;
   String gender = "unspecified";
   String? skateType;

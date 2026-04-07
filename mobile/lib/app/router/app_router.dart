@@ -14,6 +14,7 @@ import "../../features/home/presentation/banner_view_screen.dart";
 import "../../features/home/presentation/home_screen.dart";
 import "../../features/onboarding/presentation/onboarding_screen.dart";
 import "../../features/profile/presentation/profile_screen.dart";
+import "../../features/profile/presentation/add_kid_screen.dart";
 import "../../features/support/presentation/support_screen.dart";
 import "../../features/settings/presentation/settings_screen.dart";
 import "../../features/profile/data/profile_providers.dart";
@@ -39,6 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: "/email-auth", builder: (context, state) => const EmailAuthScreen()),
       GoRoute(path: "/home", builder: (context, state) => const HomeScreen()),
       GoRoute(path: "/profile", builder: (context, state) => const ProfileScreen()),
+      GoRoute(path: "/profile/add-kid", builder: (context, state) => const AddKidScreen()),
       GoRoute(path: "/support", builder: (context, state) => SupportScreen(prefilledMessage: state.extra as String?)),
       GoRoute(path: "/settings", builder: (context, state) => const SettingsScreen()),
       GoRoute(path: "/profile-complete", builder: (context, state) => const ProfileCompletionScreen()),
