@@ -314,16 +314,17 @@ class _HomePage extends ConsumerWidget {
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.all(16),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate([
-              const SizedBox(height: 12),
-              const _SectionTitle("Leaderboard"),
-              const Card(child: ListTile(title: Text("Top skaters this week"))),
-            ]),
+        if (profileAsync.valueOrNull?.role == "admin")
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const SizedBox(height: 12),
+                const _SectionTitle("Leaderboard"),
+                const Card(child: ListTile(title: Text("Top skaters this week"))),
+              ]),
+            ),
           ),
-        ),
       ],
     );
   }
