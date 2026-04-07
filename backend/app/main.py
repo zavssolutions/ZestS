@@ -35,17 +35,19 @@ def run_migrations():
         # We must import all models so SQLModel registers them before create_all is called
         import app.models  # Ensures registries are mapped
         
-        print("DEBUG: Forcefully terminating other DB connections to prevent deadlocks...")
-        with engine.begin() as conn:
-            conn.execute(text("""
-                SELECT pg_terminate_backend(pg_stat_activity.pid)
-                FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = current_database()
-                  AND pid <> pg_backend_pid();
-            """))
-        import time
-        time.sleep(1) # Yield a moment for locks to properly release
-        print("DEBUG: Other connections terminated.")
+        try:
+            print("DEBUG: Forcefully terminating other DB connections to prevent deadlocks...")
+            with engine.begin() as conn:
+                conn.execute(text("""
+                    SELECT pg_terminate_backend(pg_stat_activity.pid)
+                    FROM pg_stat_activity
+                    WHERE pg_stat_activity.datname = current_database()
+                      AND pid <> pg_backend_pid();
+                """))
+            print("DEBUG: Other connections terminated.")
+        except Exception as e:
+            print(f"DEBUG: Could not terminate other connections (likely insufficient privileges on Render): {e}")
+            logger.warning(f"Could not terminate other connections: {e}")
         
         print("DEBUG: Executing SQLModel.metadata.create_all(engine)...")
         SQLModel.metadata.create_all(engine)
