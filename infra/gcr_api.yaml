@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: zests-backend
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    spec:
+      containers:
+      - image: REPLACEME_IMAGE
+        env:
+        - name: DATABASE_URL
+          value: REPLACEME_SUPABASE
+        - name: REDIS_URL
+          value: REPLACEME_REDIS
+        - name: APP_ENV
+          value: production
+        - name: RUN_MIGRATIONS
+          value: "true"
+        ports:
+        - containerPort: 8080

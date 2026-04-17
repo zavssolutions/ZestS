@@ -1,0 +1,21 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: zests-worker
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containers:
+      - image: REPLACEME_IMAGE
+        command: ["celery"]
+        args: ["-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=INFO"]
+        env:
+        - name: DATABASE_URL
+          value: REPLACEME_SUPABASE
+        - name: REDIS_URL
+          value: REPLACEME_REDIS
+        - name: APP_ENV
+          value: production

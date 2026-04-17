@@ -1,0 +1,21 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: zests-worker
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containers:
+      - image: asia-south1-docker.pkg.dev/project-891d72fd-d662-4503-a25/zests-repo/backend:latest
+        command: ["celery"]
+        args: ["-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=INFO"]
+        env:
+        - name: DATABASE_URL
+          value: postgresql+psycopg://postgres:ZestS%401089ZestS%401089@db.guxvchnfdzrkzwafdgvu.supabase.co:5432/postgres
+        - name: REDIS_URL
+          value: redis://placeholder
+        - name: APP_ENV
+          value: production

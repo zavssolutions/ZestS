@@ -265,7 +265,7 @@ class _HomePage extends ConsumerWidget {
     );
 
     final List<EventModel> events = eventsAsync.valueOrNull ?? [];
-    final displayedEvents = isLoggedIn ? events : events.take(1).toList();
+    final displayedEvents = events;
 
     return CustomScrollView(
       slivers: [

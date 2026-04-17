@@ -1,3 +1,4 @@
+import "dart:async";
 import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
@@ -104,6 +105,14 @@ final eventsRepositoryProvider = Provider<EventsRepository>((ref) {
 });
 
 final upcomingEventsProvider = FutureProvider<List<EventModel>>((ref) async {
+  // Watch token changes to refresh when logging in/out
+  ref.watch(authTokenStoreProvider);
+  
+  // Set up polling every 5 seconds
+  // TODO: In the future, this should be based on real-time event notifications instead of polling.
+  final timer = Timer(const Duration(seconds: 5), () => ref.invalidateSelf());
+  ref.onDispose(() => timer.cancel());
+
   return ref.watch(eventsRepositoryProvider).fetchUpcomingEvents();
 });
 

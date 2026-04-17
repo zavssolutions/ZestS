@@ -1,0 +1,22 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: zests-backend
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    spec:
+      containers:
+      - image: asia-south1-docker.pkg.dev/project-891d72fd-d662-4503-a25/zests-repo/backend:latest
+        env:
+        - name: DATABASE_URL
+          value: postgresql+psycopg://postgres:ZestS%401089ZestS%401089@db.guxvchnfdzrkzwafdgvu.supabase.co:5432/postgres
+        - name: REDIS_URL
+          value: redis://placeholder
+        - name: APP_ENV
+          value: production
+        - name: RUN_MIGRATIONS
+          value: "true"
+        ports:
+        - containerPort: 8080
