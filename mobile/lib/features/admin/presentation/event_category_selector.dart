@@ -102,7 +102,7 @@ class _EventCategorySelectorWidgetState
     "15-18",
     "18+",
   ];
-
+  
   static const _ageGroups = [
     "Under 11",
     "Under 14",
@@ -114,10 +114,6 @@ class _EventCategorySelectorWidgetState
     "LKG",
     "UKG",
     "1",
-    "2-3",
-    "4-5",
-    "6-8",
-    "9-10",
     "2",
     "3",
     "4",
@@ -127,6 +123,10 @@ class _EventCategorySelectorWidgetState
     "8",
     "9",
     "10",
+    "2-3",
+    "4-5",
+    "6-8",
+    "9-10",
     "10+",
   ];
 
@@ -195,7 +195,14 @@ class _EventCategorySelectorWidgetState
                   selected: sel.ages,
                   onToggle: (item, val) {
                     setState(() {
-                      val ? sel.ages.add(item) : sel.ages.remove(item);
+                      if (val) {
+                        sel.ages.add(item);
+                        // Mutual exclusivity: clear other subgroups
+                        sel.ageGroups.clear();
+                        sel.grades.clear();
+                      } else {
+                        sel.ages.remove(item);
+                      }
                     });
                     widget.onChanged();
                   },
@@ -215,9 +222,14 @@ class _EventCategorySelectorWidgetState
                   selected: sel.ageGroups,
                   onToggle: (item, val) {
                     setState(() {
-                      val
-                          ? sel.ageGroups.add(item)
-                          : sel.ageGroups.remove(item);
+                      if (val) {
+                        sel.ageGroups.add(item);
+                        // Mutual exclusivity: clear other subgroups
+                        sel.ages.clear();
+                        sel.grades.clear();
+                      } else {
+                        sel.ageGroups.remove(item);
+                      }
                     });
                     widget.onChanged();
                   },
@@ -235,7 +247,14 @@ class _EventCategorySelectorWidgetState
                 selected: sel.grades,
                 onToggle: (item, val) {
                   setState(() {
-                    val ? sel.grades.add(item) : sel.grades.remove(item);
+                    if (val) {
+                      sel.grades.add(item);
+                      // Mutual exclusivity: clear other subgroups
+                      sel.ages.clear();
+                      sel.ageGroups.clear();
+                    } else {
+                      sel.grades.remove(item);
+                    }
                   });
                   widget.onChanged();
                 },

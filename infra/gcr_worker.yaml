@@ -10,12 +10,20 @@ spec:
     spec:
       containers:
       - image: REPLACEME_IMAGE
-        command: ["celery"]
-        args: ["-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=INFO"]
+        command: ["sh"]
+        args: ["-c", "python -m http.server 8080 & celery -A app.workers.celery_app.celery_app worker --loglevel=INFO"]
         env:
         - name: DATABASE_URL
           value: REPLACEME_SUPABASE
         - name: REDIS_URL
           value: REPLACEME_REDIS
+        - name: FIREBASE_PROJECT_ID
+          value: REPLACEME_FIREBASE_ID
+        - name: ADMIN_EMAILS
+          value: REPLACEME_ADMIN_EMAILS
+        - name: GCP_STORAGE_BUCKET
+          value: REPLACEME_STORAGE_BUCKET
+        - name: CELERY_ENABLED
+          value: "true"
         - name: APP_ENV
           value: production

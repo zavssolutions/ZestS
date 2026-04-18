@@ -57,10 +57,13 @@ def clear_all_data(session: Session):
 
 def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 10):
     """
-    End-to-End massive populator. Appends to existing data instead of wiping.
+    End-to-End massive populator. Optimized with batch commits for remote DB stability.
     """
     try:
         now = datetime.now(timezone.utc)
+        
+        # Lists to store batch additions
+        to_add = []
         
         # Generate random constants
         genders = ["male", "female"]
@@ -80,23 +83,21 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             is_active=True,
         )
         session.add(org_user)
-        session.commit()
-        session.refresh(org_user)
+        # We need this committed to get the organizer_id sequence if applicable, 
+        # but here we manually set it to be safe.
         
         org_prof = OrganizerProfile(
             user_id=org_user.id,
-            organizer_id=random.randint(100, 9999), # Manual ID to bypass sequence/not-null issues
+            organizer_id=random.randint(100, 9999), 
             org_name="ZestS Official Massive Org",
             is_verified_org=True
         )
         session.add(org_prof)
-        session.commit()
-        session.refresh(org_prof)
 
         # ==========================================
-        # 2. Create Event & Event Categories (Cartesian Product)
+        # 2. Create Event & Event Categories
         # ==========================================
-        print(f"DEBUG SEEDER: Creating event for organizer_id={org_prof.organizer_id}...")
+        print(f"DEBUG SEEDER: Creating event for organizer...")
         event = Event(
             organizer_id=org_prof.organizer_id,
             organizer_user_id=org_user.id,
@@ -108,12 +109,9 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             price=150.0
         )
         session.add(event)
-        session.commit()
-        session.refresh(event)
 
-        print("DEBUG SEEDER: Creating categories...")
+        print("DEBUG SEEDER: Generating categories...")
         categories = []
-        # Make a few diverse categories so we can assign users
         for s_type in skate_types:
             for a_grp in age_groups:
                 for dist in distances:
@@ -128,56 +126,32 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                             price=150.0
                         )
                         categories.append(cat)
-                        session.add(cat)
-        session.commit()
+        session.add_all(categories)
 
         # ==========================================
         # 3. Create Sponsor & Banner
         # ==========================================
-        print("DEBUG SEEDER: Creating sponsor and banner...")
-        sponsor = Sponsor(
-            name="RedBull ZestS Simulator",
-            logo_url="https://picsum.photos/100"
-        )
-        session.add(sponsor)
-        session.commit()
-        
-        banner = Banner(
-            title="Welcome to ZestS!",
-            image_url="assets/images/zests_logo.png",
-            placement="home_top",
-            share_url=f"https://zests.app.link/home"
-        )
-        session.add(banner)
-
-        banner2 = Banner(
-            title="Register for upcoming championships!",
-            image_url="assets/images/zests_logo.png",
-            placement="home_top",
-            share_url=f"https://zests.app.link/events"
-        )
-        session.add(banner2)
-        session.commit()
+        print("DEBUG SEEDER: Adding sponsors and banners...")
+        to_add.append(Sponsor(name="RedBull ZestS Simulator", logo_url="https://picsum.photos/100"))
+        to_add.append(Banner(title="Welcome to ZestS!", image_url="assets/images/zests_logo.png", placement="home_top", share_url="https://zests.app.link/home"))
+        to_add.append(Banner(title="Register for upcoming championships!", image_url="assets/images/zests_logo.png", placement="home_top", share_url="https://zests.app.link/events"))
 
         # ==========================================
         # 4. Create Parents & Kids
         # ==========================================
-        print(f"DEBUG SEEDER: Creating {num_parents} parents...")
-        kids = []
+        print(f"DEBUG SEEDER: Preparing {num_parents} parents and kids...")
+        kids_info = []
         for i in range(num_parents):
             parent = User(
                 email=f"parent_{uuid4().hex[:6]}@zests.test",
                 first_name=f"Parent {i}",
                 role="parent",
             )
-            session.add(parent)
-            session.commit()
-            session.refresh(parent)
+            to_add.append(parent)
             
-            # Add 2 kids per parent
             for j in range(2):
                 k_gen = random.choice(genders)
-                k_age = random.choice(age_groups[:2]) # mostly younger
+                k_age = random.choice(age_groups[:2]) 
                 k_skts = random.choice(skate_types)
                 
                 kid = User(
@@ -187,35 +161,17 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                     gender=k_gen,
                     sport="skating"
                 )
-                session.add(kid)
-                session.commit()
-                session.refresh(kid)
+                to_add.append(kid)
+                to_add.append(ParentChildMapping(parent_id=parent.id, child_id=kid.id))
+                to_add.append(SkaterProfile(user_id=kid.id, skill_level="Intermediate", skate_type=k_skts, age_group=k_age))
                 
-                kids.append({
-                    "user": kid,
-                    "gender": k_gen,
-                    "age_group": k_age,
-                    "skate_type": k_skts
-                })
-                
-                # Map Parent to Kid
-                mapping = ParentChildMapping(parent_id=parent.id, child_id=kid.id)
-                session.add(mapping)
-                
-                kid_profile = SkaterProfile(
-                    user_id=kid.id,
-                    skill_level="Intermediate",
-                    skate_type=k_skts,
-                    age_group=k_age
-                )
-                session.add(kid_profile)
-        session.commit()
+                kids_info.append({"user": kid, "gender": k_gen, "age_group": k_age, "skate_type": k_skts})
 
         # ==========================================
         # 5. Create random Skaters
         # ==========================================
-        print(f"DEBUG SEEDER: Creating {num_skaters} skaters...")
-        skaters = []
+        print(f"DEBUG SEEDER: Preparing {num_skaters} skaters...")
+        skaters_info = []
         for i in range(num_skaters):
             s_gen = random.choice(genders)
             s_age = random.choice(age_groups)
@@ -224,95 +180,67 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             skater = User(
                 email=f"skater_{uuid4().hex[:8]}@zests.test",
                 first_name=f"Skater {i}",
-                role="kid", # Let's assume all skaters are standalone "kid" roles for this logic
+                role="kid", 
                 gender=s_gen,
             )
-            session.add(skater)
-            session.commit()
-            session.refresh(skater)
+            to_add.append(skater)
+            to_add.append(SkaterProfile(user_id=skater.id, skill_level="Advanced", skate_type=s_skts, age_group=s_age))
             
-            skaters.append({
-                "user": skater,
-                "gender": s_gen,
-                "age_group": s_age,
-                "skate_type": s_skts
-            })
-            
-            skater_prof = SkaterProfile(
-                user_id=skater.id,
-                skill_level="Advanced",
-                skate_type=s_skts,
-                age_group=s_age
-            )
-            session.add(skater_prof)
-        session.commit()
+            skaters_info.append({"user": skater, "gender": s_gen, "age_group": s_age, "skate_type": s_skts})
         
-        # Combine kids and skaters for universal registration step
-        all_participants = kids + skaters
+        # Batch add everything prepared so far
+        session.add_all(to_add)
+        
+        # Combine participant info for registration
+        all_participants = kids_info + skaters_info
 
         # ==========================================
         # 6. Registrations
         # ==========================================
-        print("DEBUG SEEDER: Creating registrations...")
+        print("DEBUG SEEDER: Batching registrations...")
+        registrations = []
         for p in all_participants:
             # Find matching categories
             matching_cats = [c for c in categories 
                              if c.gender == p["gender"] 
                              and c.age_group == p["age_group"] 
                              and c.skate_type == p["skate_type"]]
-            if not matching_cats:
-                continue
-            
-            chosen_cat = random.choice(matching_cats)
-            
-            reg = EventRegistration(
-                event_id=event.id,
-                category_id=chosen_cat.id,
-                user_id=p["user"].id,
-                status="confirmed"
-            )
-            session.add(reg)
-        
-        # Single commit for all registrations
-        try:
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"DEBUG SEEDER: Registration batch commit failed: {e}")
+            if matching_cats:
+                chosen_cat = random.choice(matching_cats)
+                registrations.append(EventRegistration(
+                    event_id=event.id,
+                    category_id=chosen_cat.id,
+                    user_id=p["user"].id,
+                    status="confirmed"
+                ))
+        session.add_all(registrations)
 
         # ==========================================
         # 7. Create Leaderboard Event Results
         # ==========================================
-        print("DEBUG SEEDER: Generating leaderboard...")
-        regs = session.execute(select(EventRegistration).where(EventRegistration.event_id == event.id)).scalars().all()
-        
-        # Group by category_id
+        print("DEBUG SEEDER: Batching leaderboard...")
         cat_to_users = {}
-        for r in regs:
+        for r in registrations:
             if r.category_id not in cat_to_users:
                 cat_to_users[r.category_id] = []
             cat_to_users[r.category_id].append(r.user_id)
             
         for cat_id, uids in cat_to_users.items():
-            if len(uids) == 0:
-                continue
-                
             random.shuffle(uids)
-            winners = uids[:3] # Up to top 3
-            
+            winners = uids[:3] 
             for rank, uid in enumerate(winners, start=1):
                 pts = 100 if rank == 1 else (75 if rank == 2 else 50)
-                res = EventResult(
+                session.add(EventResult(
                     event_id=event.id,
                     category_id=cat_id,
                     user_id=uid,
                     rank=rank,
-                    timing_ms=random.randint(45000, 120000), # 45s to 2mins
+                    timing_ms=random.randint(45000, 120000),
                     points_earned=pts
-                )
-                session.add(res)
-        session.commit()
+                ))
 
+        # FINAL COMMIT: All data saved in one go!
+        session.commit()
         print("DEBUG SEEDER: Completed successfully!")
         return {"message": "Success! Massive dataset injected into ZestS."}
     except Exception as e:

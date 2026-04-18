@@ -1,6 +1,7 @@
 import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
+import "package:flutter_riverpod/flutter_riverpod.dart";
 
 import "constants.dart";
 import "../features/auth/data/auth_token_store.dart";
@@ -9,8 +10,8 @@ final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
       baseUrl: kApiBaseUrl,
-      connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: const Duration(seconds: 120),
+      receiveTimeout: const Duration(seconds: 300),
     ),
   );
 

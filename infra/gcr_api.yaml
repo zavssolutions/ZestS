@@ -14,6 +14,12 @@ spec:
           value: REPLACEME_SUPABASE
         - name: REDIS_URL
           value: REPLACEME_REDIS
+        - name: FIREBASE_PROJECT_ID
+          value: REPLACEME_FIREBASE_ID
+        - name: ADMIN_EMAILS
+          value: REPLACEME_ADMIN_EMAILS
+        - name: GCP_STORAGE_BUCKET
+          value: REPLACEME_STORAGE_BUCKET
         - name: APP_ENV
           value: production
         - name: RUN_MIGRATIONS

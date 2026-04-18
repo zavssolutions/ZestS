@@ -39,16 +39,18 @@ def _save_local(object_name: str, data: bytes) -> str:
 def upload_bytes(object_name: str, data: bytes, content_type: str) -> str:
     settings = get_settings()
     
-    # Fallback for local development if GCP is not configured
-    if not settings.gcp_storage_bucket or not settings.gcp_storage_credentials_json:
-        return _save_local(object_name, data)
+    # Use cloud storage if bucket is configured
+    if settings.gcp_storage_bucket:
+        try:
+            client = get_storage_client()
+            bucket = client.bucket(settings.gcp_storage_bucket)
+            blob = bucket.blob(object_name)
+            blob.upload_from_string(data, content_type=content_type)
+            return blob.public_url
+        except Exception as e:
+            # Fallback to local if configuration/permissions fail
+            logging.warning("GCP Upload failed, falling back to local: %s", e)
+            return _save_local(object_name, data)
 
-    try:
-        bucket = get_storage_client().bucket(settings.gcp_storage_bucket)
-        blob = bucket.blob(object_name)
-        blob.upload_from_string(data, content_type=content_type)
-        return blob.public_url
-    except Exception as e:
-        # If GCP fails, fallback to local as well to avoid blocking
-        logging.warning("GCP Upload failed, falling back to local: %s", e)
-        return _save_local(object_name, data)
+    # Default to local if no bucket configured
+    return _save_local(object_name, data)

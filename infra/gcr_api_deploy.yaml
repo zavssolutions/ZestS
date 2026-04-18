@@ -14,6 +14,12 @@ spec:
           value: postgresql+psycopg://postgres:ZestS%401089ZestS%401089@db.guxvchnfdzrkzwafdgvu.supabase.co:5432/postgres
         - name: REDIS_URL
           value: redis://placeholder
+        - name: FIREBASE_PROJECT_ID
+          value: test-49b1d
+        - name: ADMIN_EMAILS
+          value: sivakumar.perumalla.lld01@gmail.com,admin@zestsports.in
+        - name: GCP_STORAGE_BUCKET
+          value: project-891d72fd-d662-4503-a25.firebasestorage.app
         - name: APP_ENV
           value: production
         - name: RUN_MIGRATIONS
