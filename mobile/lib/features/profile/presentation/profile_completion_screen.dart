@@ -264,10 +264,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                           items: const [
                             DropdownMenuItem(value: "male", child: Text("Male")),
                             DropdownMenuItem(value: "female", child: Text("Female")),
-                            DropdownMenuItem(value: "other", child: Text("Other")),
-                            DropdownMenuItem(value: "unspecified", child: Text("Unspecified")),
                           ],
-                          onChanged: (val) => setState(() => kid.gender = val ?? "unspecified"),
+                          onChanged: (val) => setState(() => kid.gender = val ?? "male"),
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
@@ -366,7 +364,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
 class _KidFormModel {
   final nameController = TextEditingController();
   DateTime? dob;
-  String gender = "unspecified";
+  String gender = "male";
   String? skateType;
   String? ageGroup;
 }

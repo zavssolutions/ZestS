@@ -14,7 +14,7 @@ class AddKidScreen extends ConsumerStatefulWidget {
 class _AddKidScreenState extends ConsumerState<AddKidScreen> {
   final _nameController = TextEditingController();
   DateTime? _dob;
-  String _gender = "unspecified";
+  String _gender = "male";
   String? _skateType;
   String? _ageGroup;
   bool _saving = false;
@@ -108,10 +108,8 @@ class _AddKidScreenState extends ConsumerState<AddKidScreen> {
               items: const [
                 DropdownMenuItem(value: "male", child: Text("Male")),
                 DropdownMenuItem(value: "female", child: Text("Female")),
-                DropdownMenuItem(value: "other", child: Text("Other")),
-                DropdownMenuItem(value: "unspecified", child: Text("Unspecified")),
               ],
-              onChanged: (val) => setState(() => _gender = val ?? "unspecified"),
+              onChanged: (val) => setState(() => _gender = val ?? "male"),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

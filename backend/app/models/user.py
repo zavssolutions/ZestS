@@ -23,7 +23,7 @@ class User(SQLModel, table=True):
 
     role: str = Field(default="parent", sa_column=Column(String(20), nullable=False, server_default="parent"))
     sport: str = Field(default="skating", sa_column=Column(String(20), nullable=False, server_default="skating"))
-    gender: str = Field(default="unspecified", sa_column=Column(String(20), nullable=False, server_default="unspecified"))
+    gender: str = Field(default="male", sa_column=Column(String(20), nullable=False, server_default="male"))
 
     firebase_uid: Optional[str] = Field(default=None, max_length=128)
     google_uid: Optional[str] = Field(default=None, max_length=128)
