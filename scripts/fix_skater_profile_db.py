@@ -1,10 +1,20 @@
 import psycopg2
+import os
+import sys
 
-# Production DB URL
-DB_URL = "postgresql://zests_admin:PGqLnE79TwOMu6BDalkSJwoQPm70Mlrg@dpg-d6t2phi4d50c73c1vshg-a.oregon-postgres.render.com/zestsmvp_db"
+# DATABASE_URL env var or fallback
+DB_URL = os.getenv("DATABASE_URL")
+if not DB_URL:
+    print("ERROR: DATABASE_URL environment variable is not set.")
+    sys.exit(1)
+
+# Ensure protocol is correct for psycopg2 (if using raw psycopg2 without SQLAlchemy)
+if DB_URL.startswith("postgresql+psycopg://"):
+    DB_URL = DB_URL.replace("postgresql+psycopg://", "postgresql://")
 
 def fix_db():
     try:
+        print(f"Connecting to database...")
         conn = psycopg2.connect(DB_URL)
         cur = conn.cursor()
         

@@ -1,14 +1,18 @@
 import os
 from sqlalchemy import create_engine, text
 
-# Fallback to Render URL if env var not set
-HARDCODED_URL = "postgresql://zests_admin:PGqLnE79TwOMu6BDalkSJwoQPm70Mlrg@dpg-d6t2phi4d50c73c1vshg-a.oregon-postgres.render.com/zestsmvp_db"
-DB_URL = os.getenv("DATABASE_URL", HARDCODED_URL)
-
 def test_conn():
+    # Use DATABASE_URL from environment
+    DB_URL = os.getenv("DATABASE_URL")
+    
+    if not DB_URL:
+        print("FAILURE: DATABASE_URL environment variable is not set.")
+        print("Please set it using: $env:DATABASE_URL = 'postgresql+psycopg://user:pass@host:port/db'")
+        return False
+
     try:
-        # Supabase often requires postgresql+psycopg
         url = DB_URL
+        # Normalize protocol for SQLAlchemy
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+psycopg://", 1)
         elif url.startswith("postgresql://") and "+psycopg" not in url:

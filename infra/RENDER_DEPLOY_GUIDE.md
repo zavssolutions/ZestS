@@ -7,7 +7,12 @@
 | `zests-backend`      | Web    | `backend/` | Python 3.12 |
 | `zests-admin`        | Web    | `admin/`   | Node.js |
 | `zests-celery-worker`| Worker | `backend/` | Python 3.12 |
-| PostgreSQL Database  | DB     | —          | Render Managed |
+| PostgreSQL Database  | DB     | —          | Supabase (Migrated) |
+
+> [!IMPORTANT]
+> **Database Host Change**: The database has been migrated from Render Managed PostgreSQL to **Supabase**. 
+> Render is now used only for running the Backend API, Admin Dashboard, and Celery Workers. 
+> Ensure the `DATABASE_URL` in Render points to your Supabase connection string.
 
 ---
 

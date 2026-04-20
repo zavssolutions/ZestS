@@ -13,22 +13,23 @@ from app import models
 
 def get_engine():
     # Attempt to fetch the URL natively from the environment or settings.
-    # The default from settings is usually localhost.
     settings = get_settings()
     db_url = os.getenv("DATABASE_URL", settings.database_url)
     
-    # Render provides postgres:// but SQLAlchemy requires postgresql://
+    # Convert protocol if needed
     if db_url and db_url.startswith("postgres://"):
         db_url = db_url.replace("postgres://", "postgresql+psycopg://")
+    elif db_url and db_url.startswith("postgresql://") and "+psycopg" not in db_url:
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
         
-    print(f"Connecting to database via URL: {db_url}")
+    print(f"Connecting to database: {db_url.split('@')[-1] if '@' in db_url else 'localhost'}")
     return create_engine(db_url)
 
 def main():
     engine = get_engine()
     
     with engine.connect() as conn:
-        print("\n=== DISPLAYING ALL TABLES IN THE RENDER DATABASE ===")
+        print("\n=== DISPLAYING ALL TABLES IN THE DATABASE ===")
         # We loop through all registered models in the SQLModel metadata mapper
         for table_name, table in SQLModel.metadata.tables.items():
             print(f"\n--- TABLE: {table_name.upper()} ---")
