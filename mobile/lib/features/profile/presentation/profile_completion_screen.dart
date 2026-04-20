@@ -200,7 +200,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: _role,
+              initialValue: _role,
               decoration: const InputDecoration(labelText: "Role"),
               items: const [
                 DropdownMenuItem(value: "parent", child: Text("Parent")),
@@ -259,8 +259,8 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: kid.gender,
-                          decoration: const InputDecoration(labelText: "Kid's Gender"),
+                          initialValue: kid.gender,
+                          decoration: const InputDecoration(labelText: "Gender"),
                           items: const [
                             DropdownMenuItem(value: "male", child: Text("Male")),
                             DropdownMenuItem(value: "female", child: Text("Female")),
@@ -269,15 +269,15 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: kid.skateType,
-                          decoration: const InputDecoration(labelText: "Kid's Skate Type"),
+                          initialValue: kid.skateType,
+                          decoration: const InputDecoration(labelText: "Skate Type"),
                           items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                           onChanged: (val) => setState(() => kid.skateType = val),
                         ),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<String>(
-                          value: kid.ageGroup,
-                          decoration: const InputDecoration(labelText: "Kid's Age Group"),
+                          initialValue: kid.ageGroup,
+                          decoration: const InputDecoration(labelText: "Age Group"),
                           items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                           onChanged: (val) => setState(() => kid.ageGroup = val),
                         ),
@@ -315,7 +315,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             if (_role == "skater") ...[
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _skillLevel,
+                initialValue: _skillLevel,
                 decoration: const InputDecoration(labelText: "Skill Level (1-10)"),
                 items: List.generate(10, (i) => (i + 1).toString()).map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (val) => setState(() => _skillLevel = val),
@@ -324,7 +324,7 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
               TextField(controller: _yearsSkatingController, decoration: const InputDecoration(labelText: "Years Skating"), keyboardType: TextInputType.number),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _preferredTracks,
+                initialValue: _preferredTracks,
                 decoration: const InputDecoration(labelText: "Preferred Tracks"),
                 items: ["Road", "Rink", "Ice", "Artistic"].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                 onChanged: (val) => setState(() => _preferredTracks = val),
@@ -333,14 +333,14 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
               TextField(controller: _schoolNameController, decoration: const InputDecoration(labelText: "School Name")),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _skateType,
+                initialValue: _skateType,
                 decoration: const InputDecoration(labelText: "Skate Type"),
                 items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
                 onChanged: (val) => setState(() => _skateType = val),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _ageGroup,
+                initialValue: _ageGroup,
                 decoration: const InputDecoration(labelText: "Age Group"),
                 items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                 onChanged: (val) => setState(() => _ageGroup = val),

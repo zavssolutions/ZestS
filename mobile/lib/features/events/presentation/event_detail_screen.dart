@@ -1,6 +1,6 @@
 import "package:cached_network_image/cached_network_image.dart";
 import "package:flutter/material.dart";
-import "package:flutter/services.dart";
+import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:go_router/go_router.dart";
 import "package:url_launcher/url_launcher.dart";
@@ -26,7 +26,10 @@ class EventDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
-  final Set<String> _selectedCategoryIds = {};
+  final Set<String> _selSkates = {};
+  final Set<String> _selDistances = {};
+  final Set<String> _selAgeGroups = {};
+  final Set<String> _selGenders = {};
   String? _selectedUserId;
 
   @override
@@ -88,7 +91,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               try {
                 final link = await ref.read(eventsRepositoryProvider).createShareLink(widget.eventId);
                 if (link.isNotEmpty) {
-                  await Share.share("Check out this event: $link");
+                  await Share.shareUri(Uri.parse(link));
                 }
               } catch (e) {
                 if (context.mounted) {
@@ -187,6 +190,39 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           return const Text("No categories available for registration yet.");
         }
 
+        // Determine available groups
+        final skateTypes = categories.map((c) => c.skateType).whereType<String>().toSet().toList()..sort();
+        final distances = categories.map((c) => c.distance).whereType<String>().toSet().toList()..sort();
+        final ageGroups = categories.map((c) => c.ageGroup).whereType<String>().toSet().toList()..sort();
+        final genderGroups = categories.map((c) => c.gender).whereType<String>().toSet().toList()..sort();
+
+        // Calculate which categories are "fully selected" based on intersections
+        final Set<String> activeCategoryIds = {};
+        for (final cat in categories) {
+          bool matches = true;
+          if (skateTypes.isNotEmpty && !(_selSkates.contains(cat.skateType))) matches = false;
+          if (distances.isNotEmpty && !(_selDistances.contains(cat.distance))) matches = false;
+          if (ageGroups.isNotEmpty && !(_selAgeGroups.contains(cat.ageGroup))) matches = false;
+          if (genderGroups.isNotEmpty && !(_selGenders.contains(cat.gender))) matches = false;
+          if (matches) activeCategoryIds.add(cat.id);
+        }
+
+        bool allGroupsSelected = true;
+        if (skateTypes.isNotEmpty && _selSkates.isEmpty) allGroupsSelected = false;
+        if (distances.isNotEmpty && _selDistances.isEmpty) allGroupsSelected = false;
+        if (ageGroups.isNotEmpty && _selAgeGroups.isEmpty) allGroupsSelected = false;
+        if (genderGroups.isNotEmpty && _selGenders.isEmpty) allGroupsSelected = false;
+
+        void toggleAttr(Set<String> selSet, String value) {
+          setState(() {
+            if (selSet.contains(value)) {
+              selSet.remove(value);
+            } else {
+              selSet.add(value);
+            }
+          });
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -194,31 +230,98 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
             const SizedBox(height: 8),
             registrationsAsync.when(
               data: (myRegs) {
+                final currentUserId = _selectedUserId ?? profileAsync.value?.id;
+                final mySelectedRegs = myRegs.where((r) => r.userId == currentUserId && r.status != "cancelled").toList();
+                
+                // Calculate cumulative price
+                double totalPrice = 0;
+                for (final catId in activeCategoryIds) {
+                  final cat = categories.firstWhere((c) => c.id == catId);
+                  final alreadyReg = mySelectedRegs.any((r) => r.categoryId == cat.id);
+                  if (!alreadyReg) {
+                    totalPrice += cat.price;
+                  }
+                }
+
                 return Column(
-                  children: categories.map((c) {
-                    final registered = myRegs.any((r) => r.categoryId == c.id && r.userId == (_selectedUserId ?? profileAsync.value?.id) && r.status != "cancelled");
-                    final isSelected = _selectedCategoryIds.contains(c.id) || registered;
+                  children: [
+                    if (skateTypes.isNotEmpty)
+                      _buildBorderedGroup(
+                        title: "Skate Types",
+                        icon: Icons.roller_skating,
+                        items: skateTypes.map((st) {
+                          final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).skateType == st);
+                          return _buildAttrCheckbox(
+                            label: st,
+                            selected: _selSkates.contains(st) || isRegistered,
+                            onChanged: isRegistered ? null : (_) => toggleAttr(_selSkates, st),
+                          );
+                        }).toList(),
+                      ),
+                    if (distances.isNotEmpty)
+                      _buildBorderedGroup(
+                        title: "Distances",
+                        icon: Icons.straighten,
+                        items: distances.map((d) {
+                          final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).distance == d);
+                          return _buildAttrCheckbox(
+                            label: d,
+                            selected: _selDistances.contains(d) || isRegistered,
+                            onChanged: isRegistered ? null : (_) => toggleAttr(_selDistances, d),
+                          );
+                        }).toList(),
+                      ),
+                    if (ageGroups.isNotEmpty)
+                      _buildBorderedGroup(
+                        title: "Age / Grade Categories",
+                        icon: Icons.group,
+                        items: ageGroups.map((ag) {
+                          final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).ageGroup == ag);
+                          return _buildAttrCheckbox(
+                            label: ag,
+                            selected: _selAgeGroups.contains(ag) || isRegistered,
+                            onChanged: isRegistered ? null : (_) => toggleAttr(_selAgeGroups, ag),
+                          );
+                        }).toList(),
+                      ),
+                    if (genderGroups.isNotEmpty)
+                      _buildBorderedGroup(
+                        title: "Gender",
+                        icon: Icons.person_search,
+                        items: genderGroups.map((g) {
+                          final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).gender == g);
+                          return _buildAttrCheckbox(
+                            label: g.toUpperCase(),
+                            selected: _selGenders.contains(g) || isRegistered,
+                            onChanged: isRegistered ? null : (_) => toggleAttr(_selGenders, g),
+                          );
+                        }).toList(),
+                      ),
                     
-                    return CheckboxListTile(
-                      title: Text(c.name),
-                      subtitle: registered 
-                        ? const Text("Already Registered", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
-                        : Text("Price: ₹${c.price.toStringAsFixed(0)}"),
-                      value: isSelected,
-                      onChanged: registered ? null : (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedCategoryIds.add(c.id);
-                          } else {
-                            _selectedCategoryIds.remove(c.id);
-                          }
-                        });
-                      },
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      dense: true,
-                    );
-                  }).toList(),
+                    if (totalPrice > 0) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("Total Registration Fee:", style: Theme.of(context).textTheme.titleMedium),
+                            Text("₹${totalPrice.toStringAsFixed(0)}", 
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -246,7 +349,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                       }
 
                       return DropdownButtonFormField<String>(
-                        value: _selectedUserId,
+                        initialValue: _selectedUserId,
                         items: options
                             .map(
                               (user) => DropdownMenuItem(
@@ -278,7 +381,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               data: (profile) {
                 final isLoggedIn = profile != null;
                 final needsProfileCompletion = profile != null && !profile.hasCompletedProfile;
-                final enabled = _selectedCategoryIds.isNotEmpty && isLoggedIn && !needsProfileCompletion;
+                final enabled = isLoggedIn && !needsProfileCompletion && allGroupsSelected && activeCategoryIds.isNotEmpty;
                 return FilledButton(
                   onPressed: !enabled
                       ? () {
@@ -290,9 +393,15 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                             context.push("/profile-complete");
                             return;
                           }
-                          if (_selectedCategoryIds.isEmpty) {
+                          if (!allGroupsSelected) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Please select at least one category")),
+                              const SnackBar(content: Text("Please select at least one item from every available group")),
+                            );
+                            return;
+                          }
+                          if (activeCategoryIds.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("No category matches this combination")),
                             );
                             return;
                           }
@@ -301,7 +410,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                           try {
                             await ref.read(eventsRepositoryProvider).registerForMultipleCategories(
                                   eventId: widget.eventId,
-                                  categoryIds: _selectedCategoryIds.toList(),
+                                  categoryIds: activeCategoryIds.toList(),
                                   userId: _selectedUserId,
                                 );
                             if (mounted) {
@@ -367,6 +476,76 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBorderedGroup({
+    required String title,
+    required IconData icon,
+    required List<Widget> items,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: -10,
+            left: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 16, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 0,
+              children: items,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttrCheckbox({
+    required String label,
+    required bool selected,
+    required ValueChanged<bool?>? onChanged,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Checkbox(
+          value: selected,
+          onChanged: onChanged,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        Text(label, style: const TextStyle(fontSize: 14)),
+        const SizedBox(width: 8),
+      ],
     );
   }
 }

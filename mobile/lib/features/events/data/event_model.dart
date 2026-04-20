@@ -76,12 +76,24 @@ class EventCategoryModel {
     required this.eventId,
     required this.name,
     required this.price,
+    this.categoryType,
+    this.skateType,
+    this.ageGroup,
+    this.trackType,
+    this.distance,
+    this.gender,
   });
 
   final String id;
   final String eventId;
   final String name;
   final double price;
+  final String? categoryType;
+  final String? skateType;
+  final String? ageGroup;
+  final String? trackType;
+  final String? distance;
+  final String? gender;
 
   factory EventCategoryModel.fromJson(Map<String, dynamic> json) {
     return EventCategoryModel(
@@ -89,6 +101,12 @@ class EventCategoryModel {
       eventId: json["event_id"] as String,
       name: json["name"] as String,
       price: (json["price"] as num?)?.toDouble() ?? 0,
+      categoryType: json["category_type"] as String?,
+      skateType: json["skate_type"] as String?,
+      ageGroup: json["age_group"] as String?,
+      trackType: json["track_type"] as String?,
+      distance: json["distance"] as String?,
+      gender: json["gender"] as String?,
     );
   }
 }

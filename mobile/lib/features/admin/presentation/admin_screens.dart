@@ -2,7 +2,6 @@ import "package:flutter/material.dart";
 import "package:flutter_riverpod/flutter_riverpod.dart";
 import "package:image_picker/image_picker.dart";
 import "package:dio/dio.dart";
-import "package:go_router/go_router.dart";
 import "admin_debug_screen.dart";
 
 import "../../../core/api_client.dart";
@@ -147,13 +146,19 @@ class AdminDashboardScreen extends ConsumerWidget {
   Future<void> _populateE2EData(BuildContext context, WidgetRef ref) async {
     final dio = ref.read(dioProvider);
     try {
+      if (!context.mounted) return;
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      await dio.post("/admin/debug/seed");
+      await dio.post(
+        "/admin/debug/seed",
+        options: Options(
+          receiveTimeout: const Duration(minutes: 2),
+        ),
+      );
 
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -194,6 +199,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
     if (confirm != true) return;
 
+    if (!context.mounted) return;
     final dio = ref.read(dioProvider);
     try {
       showDialog(
@@ -204,12 +210,11 @@ class AdminDashboardScreen extends ConsumerWidget {
 
       await dio.post("/admin/debug/clear");
 
-      if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Database has been completely cleared of dynamic data.")),
-        );
-      }
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Database has been completely cleared of dynamic data.")),
+      );
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
@@ -656,7 +661,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               Text("User: ${user["first_name"]} ${user["last_name"] ?? ""}"),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedRole,
+                initialValue: selectedRole,
                 items: roles.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                 onChanged: (v) => setDialogState(() => selectedRole = v!),
                 decoration: const InputDecoration(labelText: "Role"),

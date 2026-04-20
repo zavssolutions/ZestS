@@ -67,8 +67,13 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         
         # Generate random constants
         genders = ["male", "female"]
-        skate_types = ["Inline", "Quad", "Figure"]
-        age_groups = ["U10", "10-15", "15-20", "20+"]
+        skate_types = [
+            "Tenacity", "Recreational-inline", "Quad", "Pro-inline", 
+            "Roller Derby", "Roller Scooter", "Speed", "Artistic", 
+            "Roller Hockey", "Inline Hockey", "Inline Frestyle", "Skateboarding", 
+            "Roller Freestyle", "Inline Downhill", "Inline Alpine", "Skate cross"
+        ]
+        age_groups = ["U7", "U9", "U11", "U14", "U17", "Above 17"]
         distances = ["100m", "500m", "1000m"]
         
         # ==========================================
@@ -109,6 +114,9 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             price=150.0
         )
         session.add(event)
+        session.commit() # Preliminary commit to ensure IDs are generated
+        session.refresh(event)
+        session.refresh(org_prof)
 
         print("DEBUG SEEDER: Generating categories...")
         categories = []
@@ -127,6 +135,7 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                         )
                         categories.append(cat)
         session.add_all(categories)
+        session.commit() # Commit categories separately
 
         # ==========================================
         # 3. Create Sponsor & Banner
@@ -136,9 +145,6 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         to_add.append(Banner(title="Welcome to ZestS!", image_url="assets/images/zests_logo.png", placement="home_top", share_url="https://zests.app.link/home"))
         to_add.append(Banner(title="Register for upcoming championships!", image_url="assets/images/zests_logo.png", placement="home_top", share_url="https://zests.app.link/events"))
 
-        # ==========================================
-        # 4. Create Parents & Kids
-        # ==========================================
         print(f"DEBUG SEEDER: Preparing {num_parents} parents and kids...")
         kids_info = []
         for i in range(num_parents):
@@ -166,6 +172,10 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                 to_add.append(SkaterProfile(user_id=kid.id, skill_level="Intermediate", skate_type=k_skts, age_group=k_age))
                 
                 kids_info.append({"user": kid, "gender": k_gen, "age_group": k_age, "skate_type": k_skts})
+            
+            session.add_all(to_add)
+            session.commit()
+            to_add = []
 
         # ==========================================
         # 5. Create random Skaters
@@ -190,6 +200,7 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         
         # Batch add everything prepared so far
         session.add_all(to_add)
+        session.commit()
         
         # Combine participant info for registration
         all_participants = kids_info + skaters_info

@@ -103,7 +103,7 @@ class _AddKidScreenState extends ConsumerState<AddKidScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _gender,
+              initialValue: _gender,
               decoration: const InputDecoration(labelText: "Gender"),
               items: const [
                 DropdownMenuItem(value: "male", child: Text("Male")),
@@ -113,14 +113,14 @@ class _AddKidScreenState extends ConsumerState<AddKidScreen> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _skateType,
+              initialValue: _skateType,
               decoration: const InputDecoration(labelText: "Skate Type"),
               items: _skateTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
               onChanged: (val) => setState(() => _skateType = val),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _ageGroup,
+              initialValue: _ageGroup,
               decoration: const InputDecoration(labelText: "Age Group"),
               items: _ageGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
               onChanged: (val) => setState(() => _ageGroup = val),
