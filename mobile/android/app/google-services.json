@@ -14,12 +14,16 @@
       },
       "oauth_client": [
         {
-          "client_id": "278971942608-tpuv8od5stt379qqjh5lvue4fmct69rs.apps.googleusercontent.com",
+          "client_id": "278971942608-4gjjfssbggl271vsla3laaium4bddi8n.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.zests.zestsmvp",
-            "certificate_hash": "3afd5907e9e229c8f5e17d03c3ae67ce46c85c78"
+            "certificate_hash": "f8b28f82d023b3f2697d1e66a9b3780f8950fe4f"
           }
+        },
+        {
+          "client_id": "278971942608-h0j58smni3ejbf025vm77h7jeppqg707.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [

@@ -68,13 +68,10 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         # Generate random constants
         genders = ["male", "female"]
         skate_types = [
-            "Tenacity", "Recreational-inline", "Quad", "Pro-inline", 
-            "Roller Derby", "Roller Scooter", "Speed", "Artistic", 
-            "Roller Hockey", "Inline Hockey", "Inline Frestyle", "Skateboarding", 
-            "Roller Freestyle", "Inline Downhill", "Inline Alpine", "Skate cross"
+            "tenacity", "Inline", "Quad", "Toy inline"
         ]
-        age_groups = ["U7", "U9", "U11", "U14", "U17", "Above 17"]
-        distances = ["100m", "500m", "1000m"]
+        age_groups = ["4-6", "6-8", "8-10", "10-12", "12-15", "above 15"]
+        distances = ["200m", "500m", "1000m"]
         
         # ==========================================
         # 1. Create Organizer
@@ -88,9 +85,9 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             is_active=True,
         )
         session.add(org_user)
-        # We need this committed to get the organizer_id sequence if applicable, 
-        # but here we manually set it to be safe.
-        
+        session.commit() # Commit user first
+        session.refresh(org_user)
+
         org_prof = OrganizerProfile(
             user_id=org_user.id,
             organizer_id=random.randint(100, 9999), 
@@ -98,6 +95,8 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
             is_verified_org=True
         )
         session.add(org_prof)
+        session.commit() # Commit organizer profile
+        session.refresh(org_prof)
 
         # ==========================================
         # 2. Create Event & Event Categories
@@ -116,7 +115,6 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
         session.add(event)
         session.commit() # Preliminary commit to ensure IDs are generated
         session.refresh(event)
-        session.refresh(org_prof)
 
         print("DEBUG SEEDER: Generating categories...")
         categories = []
@@ -153,7 +151,9 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                 first_name=f"Parent {i}",
                 role="parent",
             )
-            to_add.append(parent)
+            session.add(parent)
+            session.commit() # Parent MUST exist for mappings
+            session.refresh(parent)
             
             for j in range(2):
                 k_gen = random.choice(genders)
@@ -167,13 +167,17 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                     gender=k_gen,
                     sport="skating"
                 )
-                to_add.append(kid)
-                to_add.append(ParentChildMapping(parent_id=parent.id, child_id=kid.id))
-                to_add.append(SkaterProfile(user_id=kid.id, skill_level="Intermediate", skate_type=k_skts, age_group=k_age))
+                session.add(kid)
+                session.commit() # Kid MUST exist for mappings/profiles
+                session.refresh(kid)
+
+                mapping = ParentChildMapping(parent_id=parent.id, child_id=kid.id)
+                profile = SkaterProfile(user_id=kid.id, skill_level="Intermediate", skate_type=k_skts, age_group=k_age)
+                session.add(mapping)
+                session.add(profile)
                 
                 kids_info.append({"user": kid, "gender": k_gen, "age_group": k_age, "skate_type": k_skts})
             
-            session.add_all(to_add)
             session.commit()
             to_add = []
 
@@ -193,13 +197,17 @@ def seed_e2e_data(session: Session, num_skaters: int = 100, num_parents: int = 1
                 role="kid", 
                 gender=s_gen,
             )
-            to_add.append(skater)
-            to_add.append(SkaterProfile(user_id=skater.id, skill_level="Advanced", skate_type=s_skts, age_group=s_age))
+            session.add(skater)
+            session.commit()
+            session.refresh(skater)
+            
+            profile = SkaterProfile(user_id=skater.id, skill_level="Advanced", skate_type=s_skts, age_group=s_age)
+            session.add(profile)
+            session.commit()
             
             skaters_info.append({"user": skater, "gender": s_gen, "age_group": s_age, "skate_type": s_skts})
         
-        # Batch add everything prepared so far
-        session.add_all(to_add)
+        # No longer needed add_all(to_add) as we commit in loops for stability
         session.commit()
         
         # Combine participant info for registration

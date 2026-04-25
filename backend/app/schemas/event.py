@@ -1,3 +1,4 @@
+import decimal
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -43,8 +44,8 @@ class EventCreate(BaseModel):
     organizer_email: Optional[str] = None
     price: float = 0
     start_at_utc: datetime
-    end_at_utc: datetime
-    location_name: str
+    end_at_utc: Optional[datetime] = None
+    location_name: Optional[str] = None
     venue_city: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -81,8 +82,8 @@ class EventOut(BaseModel):
     description: Optional[str]
     price: float
     start_at_utc: datetime
-    end_at_utc: datetime
-    location_name: str
+    end_at_utc: Optional[datetime]
+    location_name: Optional[str]
     venue_city: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]

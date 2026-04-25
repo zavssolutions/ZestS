@@ -15,7 +15,6 @@ class Settings(BaseSettings):
         default="postgresql+psycopg://postgres:postgres@localhost:5432/zests",
         alias="DATABASE_URL",
     )
-    redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
 
     meilisearch_url: str = Field(default="http://localhost:7700", alias="MEILISEARCH_URL")
     meilisearch_master_key: str = Field(default="masterKey", alias="MEILISEARCH_MASTER_KEY")
@@ -32,7 +31,6 @@ class Settings(BaseSettings):
     google_auth_enabled: bool = Field(default=True, alias="GOOGLE_AUTH_ENABLED")
     max_kids_per_parent: int = Field(default=3, alias="MAX_KIDS_PER_PARENT")
     admin_emails: str = Field(default="", alias="ADMIN_EMAILS")
-    celery_enabled: bool = Field(default=False, alias="CELERY_ENABLED")
     reset_database: bool = Field(default=False, alias="RESET_DATABASE")
     run_migrations: bool = Field(default=True, alias="RUN_MIGRATIONS")
 

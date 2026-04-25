@@ -27,6 +27,7 @@ class AuthRepository {
 
   final Dio _dio;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
+    serverClientId: "278971942608-h0j58smni3ejbf025vm77h7jeppqg707.apps.googleusercontent.com",
     scopes: <String>[
       "email",
     ],

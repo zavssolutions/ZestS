@@ -20,7 +20,7 @@ void showEventFormDialog(BuildContext context, WidgetRef ref, {EventModel? event
   final priceCtrl = TextEditingController(text: event?.price.toString() ?? "0.0");
 
   DateTime startDate = event != null ? event.startAtUtc : DateTime.now().add(const Duration(days: 30));
-  DateTime endDate = event != null ? event.endAtUtc : DateTime.now().add(const Duration(days: 31));
+  DateTime endDate = event?.endAtUtc ?? DateTime.now().add(const Duration(days: 31));
 
   String? bannerUrl = event?.bannerImageUrl;
   bool uploading = false;

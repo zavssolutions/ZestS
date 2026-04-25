@@ -75,6 +75,11 @@ def run_migrations(
     results = []
     patches = [
         ("banners", "share_url", "VARCHAR(500)"),
+        ("events", "price", "DECIMAL(10,2)"),
+        ("events", "organizer_id", "INTEGER"),
+        ("events", "organizer_user_id", "UUID"),
+        ("event_categories", "category_type", "VARCHAR(50)"),
+        ("organizer_profiles", "organizer_id", "INTEGER"),
     ]
     for table, column, col_type in patches:
         try:

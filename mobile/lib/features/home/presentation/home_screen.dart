@@ -1054,7 +1054,7 @@ class _SchedulePage extends ConsumerWidget {
                           const SizedBox(height: 8),
                           _IconTextRow(
                             icon: Icons.location_on_outlined,
-                            text: "${event.locationName}${event.venueCity != null ? ", ${event.venueCity}" : ""}",
+                            text: "${event.locationName ?? "TBD"}${event.venueCity != null ? ", ${event.venueCity}" : ""}",
                           ),
                           const SizedBox(height: 8),
                           _IconTextRow(
@@ -1187,7 +1187,7 @@ class _SearchPageState extends ConsumerState<_SearchPage> {
                     return Card(
                       child: ListTile(
                         title: Text(event.title),
-                        subtitle: Text(event.locationName),
+                        subtitle: Text(event.locationName ?? "Location TBD"),
                         onTap: () => context.push("/events/${event.id}"),
                       ),
                     );
@@ -1600,7 +1600,7 @@ class _EventCarousel extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    e.locationName,
+                                    e.locationName ?? "TBD",
                                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,

@@ -13,15 +13,15 @@ class Event(SQLModel, table=True):
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     organizer_id: Optional[int] = Field(default=None, foreign_key="organizer_profiles.organizer_id")
-    organizer_user_id: Optional[UUID] = Field(default=None)
+    organizer_user_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
 
     title: str = Field(max_length=200)
     description: Optional[str] = Field(default=None)
 
     start_at_utc: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
-    end_at_utc: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    end_at_utc: Optional[datetime] = Field(default=None, sa_column=Column(DateTime(timezone=True), nullable=True))
 
-    location_name: str = Field(max_length=120)
+    location_name: Optional[str] = Field(default=None, max_length=120)
     venue_city: Optional[str] = Field(default=None, max_length=100)
     latitude: Optional[float] = Field(default=None)
     longitude: Optional[float] = Field(default=None)

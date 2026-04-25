@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
@@ -26,7 +26,7 @@ from app.schemas.event import (
 from app.core.config import get_settings
 from app.services.notifications import send_event_status
 from app.services.search_sync import sync_event
-from app.workers.tasks import broadcast_event_status_task
+from app.services.background_tasks import broadcast_event_status_bg
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -171,6 +171,7 @@ def update_event_status(
     payload: EventStatusUpdate,
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN, UserRole.ORGANIZER)),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> Event:
     event = session.exec(select(Event).where(Event.id == UUID(str(event_id)))).first()
     if event is None:
@@ -184,11 +185,7 @@ def update_event_status(
     session.refresh(event)
 
     if new_status in ("published", "canceled"):
-        settings = get_settings()
-        if settings.celery_enabled:
-            broadcast_event_status_task.delay(str(event.id), new_status)
-        else:
-            send_event_status(session, str(event.id), new_status)
+        background_tasks.add_task(broadcast_event_status_bg, str(event.id), new_status)
 
     return event
 

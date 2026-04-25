@@ -146,7 +146,7 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
               const SizedBox(height: 8),
               Text(eventData.description ?? ""),
               const SizedBox(height: 8),
-              Text("Location: ${eventData.locationName}"),
+              Text("Location: ${eventData.locationName ?? "TBD"}"),
               Text("City: ${eventData.venueCity ?? "-"}"),
               const SizedBox(height: 16),
               if (mapUrl != null)

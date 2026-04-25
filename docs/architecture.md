@@ -42,11 +42,10 @@ graph TB
         GCS["☁️ GCP Cloud Storage<br/>Image Uploads"]
     end
 
-    subgraph Render Cluster — Singapore
-        API["⚡ FastAPI Backend<br/>uvicorn · Python 3.12"]
-        CELERY["⚙️ Celery Worker<br/>Background Tasks"]
-        REDIS["🔴 Redis 7<br/>Cache · Session · Broker"]
-        MEILI["🔍 Meilisearch v1.10<br/>Full-Text Search"]
+    subgraph Google Cloud Platform — asia-south1
+        GCR_API["☁️ Cloud Run API<br/>FastAPI + BackgroundTasks"]
+        GCR_ADMIN["🖥️ Cloud Run Admin<br/>Next.js"]
+        SECRET["🔒 Secret Manager<br/>Database Credentials"]
     end
 
     subgraph Supabase — Cloud
@@ -402,15 +401,14 @@ sequenceDiagram
 
 ## 7. Infrastructure & Deployment
 
-### 7.1 Production Stack (Render — Singapore Region)
+### 7.1 Production Stack (Google Cloud Platform — asia-south1)
 
-| Service | Type | Runtime / Provider | Purpose |
-|---------|------|---------|---------|
-| `zests-backend` | Web Service | Python 3.12 (Render) | FastAPI API server |
-| `zests-admin` | Web Service | Node.js (Render) | Next.js admin panel |
-| `zests-celery-worker` | Worker | Python 3.12 (Render) | Background tasks (FCM, search sync) |
-| PostgreSQL | Database | Supabase (v16) | Primary relational store (Migrated from Render) |
-| Redis | Key-Value | v7 (Render) | Cache, sessions, Celery broker |
+| Service | Type | Runtime / Platform | Purpose |
+|---------|------|--------------------|---------|
+| `zests-backend` | Web Service | Python 3.12 (Cloud Run) | FastAPI API + BackgroundTasks |
+| `zests-admin` | Web Service | Next.js (Cloud Run) | Admin Dashboard panel |
+| PostgreSQL | Database | Supabase (v16) | Primary relational store |
+| Secrets | Vault | GCP Secret Manager | Database URL management |
 
 ### 7.2 Local Development Stack (Docker Compose)
 

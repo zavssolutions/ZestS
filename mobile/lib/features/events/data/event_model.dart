@@ -6,10 +6,10 @@ class EventModel {
     required this.locationName,
     required this.venueCity,
     required this.startAtUtc,
-    required this.endAtUtc,
-    required this.bannerImageUrl,
-    required this.latitude,
-    required this.longitude,
+    this.endAtUtc,
+    this.bannerImageUrl,
+    this.latitude,
+    this.longitude,
     required this.status,
     required this.price,
     this.organizerId,
@@ -19,10 +19,10 @@ class EventModel {
   final String id;
   final String title;
   final String? description;
-  final String locationName;
+  final String? locationName;
   final String? venueCity;
   final DateTime startAtUtc;
-  final DateTime endAtUtc;
+  final DateTime? endAtUtc;
   final String? bannerImageUrl;
   final double? latitude;
   final double? longitude;
@@ -36,10 +36,10 @@ class EventModel {
       id: json["id"] as String,
       title: json["title"] as String,
       description: json["description"] as String?,
-      locationName: json["location_name"] as String,
+      locationName: json["location_name"] as String?,
       venueCity: json["venue_city"] as String?,
       startAtUtc: DateTime.parse(json["start_at_utc"] as String),
-      endAtUtc: DateTime.parse(json["end_at_utc"] as String),
+      endAtUtc: json["end_at_utc"] != null ? DateTime.parse(json["end_at_utc"] as String) : null,
       bannerImageUrl: json["banner_image_url"] as String?,
       latitude: (json["latitude"] as num?)?.toDouble(),
       longitude: (json["longitude"] as num?)?.toDouble(),
@@ -58,7 +58,7 @@ class EventModel {
       "location_name": locationName,
       "venue_city": venueCity,
       "start_at_utc": startAtUtc.toIso8601String(),
-      "end_at_utc": endAtUtc.toIso8601String(),
+      "end_at_utc": endAtUtc?.toIso8601String(),
       "banner_image_url": bannerImageUrl,
       "latitude": latitude,
       "longitude": longitude,
