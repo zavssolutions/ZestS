@@ -600,7 +600,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: isKid ? Colors.orange.shade100 : Colors.blue.shade100,
-                        child: Text("${u["first_name"]?[0] ?? "?"}"),
+                        child: Text(
+                          (u["first_name"] != null && u["first_name"].isNotEmpty) 
+                            ? u["first_name"][0].toUpperCase() 
+                            : "?"
+                        ),
                       ),
                       title: Text("${u["first_name"] ?? "No Name"} ${u["last_name"] ?? ""}"),
                       subtitle: Text("${u["role"]}${isKid ? " (Kid)" : ""} · ${u["email"] ?? u["mobile_no"] ?? "No contact"}"),
@@ -710,12 +714,13 @@ class AdminBannersScreen extends ConsumerWidget {
           data: (banners) => ListView.builder(
             itemCount: banners.length,
             itemBuilder: (context, index) {
-              final b = banners[index] as Map<String, dynamic>;
+              final b = banners[index] as Map<String, dynamic>?;
+              if (b == null) return const SizedBox();
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                 child: ListTile(
                   title: Text(b["title"] ?? "Banner"),
-                  subtitle: Text("Placement: ${b["placement"]} · Active: ${b["is_active"]}"),
+                  subtitle: Text("Placement: ${b["placement"] ?? ""} · Active: ${b["is_active"] ?? false}"),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

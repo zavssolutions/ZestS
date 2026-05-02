@@ -76,10 +76,19 @@ def get_current_user(
     # Admin-email users only get auto-assigned admin on first creation (above).
     # After that, the user-chosen role from profile completion is preserved.
 
-    user.last_login_at = datetime.now(timezone.utc)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    # Throttled update of last_login_at to reduce DB contention
+    now = datetime.now(timezone.utc)
+    should_update = (
+        user.last_login_at is None or 
+        (now - user.last_login_at).total_seconds() > 900 # 15 minutes
+    )
+    
+    if should_update:
+        user.last_login_at = now
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        
     return user
 
 
