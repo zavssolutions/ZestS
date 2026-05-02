@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export function Sidebar() {
   const nav = [
     ["/", "Dashboard"],
@@ -16,9 +18,9 @@ export function Sidebar() {
       <h2 style={{ marginTop: 0 }}>ZestS Admin</h2>
       <nav style={{ display: "grid", gap: 10 }}>
         {nav.map(([href, label]) => (
-          <a key={href} href={href} style={{ color: "#c8f1ff", textDecoration: "none" }}>
+          <Link key={href} href={href} style={{ color: "#c8f1ff", textDecoration: "none" }}>
             {label}
-          </a>
+          </Link>
         ))}
       </nav>
     </aside>

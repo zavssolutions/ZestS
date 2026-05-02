@@ -156,6 +156,8 @@ class AuthRepository {
   }
 
   Future<AuthLoginResult> _exchangeToken(String token) async {
+    // ignore: avoid_print
+    print("DEBUG: Firebase ID Token: $token");
     late final Response<Map<String, dynamic>> response;
     try {
       response = await _dio.post<Map<String, dynamic>>(

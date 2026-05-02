@@ -47,24 +47,32 @@ def get_current_user(
     def _is_admin(email: str | None) -> bool:
         if not email:
             return False
-        allowed = [item.strip().lower() for item in settings.admin_emails.split(",") if item.strip()]
+        # Support both comma and semicolon as delimiters
+        raw_emails = settings.admin_emails.replace(";", ",").split(",")
+        allowed = [item.strip().lower() for item in raw_emails if item.strip()]
         return email.lower() in allowed
 
     user = session.exec(select(User).where(User.firebase_uid == firebase_uid)).first()
+    email = decoded.get("email")
+    is_admin_email = _is_admin(email)
+
     if user is None:
-        role = UserRole.ADMIN if _is_admin(decoded.get("email")) else UserRole.PARENT
+        role = UserRole.ADMIN if is_admin_email else UserRole.PARENT
         user = User(
             firebase_uid=firebase_uid,
             google_uid=decoded.get("user_id"),
-            email=decoded.get("email"),
+            email=email,
             mobile_no=decoded.get("phone_number"),
             first_name=decoded.get("name"),
             profile_picture_url=decoded.get("picture"),
             role=role,
         )
         session.add(user)
-        session.commit()
-        session.refresh(user)
+    else:
+        # Elevate to ADMIN if they are now in the admin list
+        if is_admin_email and user.role != UserRole.ADMIN:
+            user.role = UserRole.ADMIN
+            session.add(user)
     # Admin-email users only get auto-assigned admin on first creation (above).
     # After that, the user-chosen role from profile completion is preserved.
 
