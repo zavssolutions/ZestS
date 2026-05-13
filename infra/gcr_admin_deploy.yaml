@@ -1,0 +1,17 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: zests-admin
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    spec:
+      containers:
+      - image: asia-south1-docker.pkg.dev/project-891d72fd-d662-4503-a25/zests-repo/admin:latest
+        env:
+        - name: NEXT_PUBLIC_API_BASE_URL
+          # This should be replaced with the actual GCR URL once the backend is deployed
+          value: https://zests-backend-placeholder.a.run.app/api/v1
+        ports:
+        - containerPort: 8080

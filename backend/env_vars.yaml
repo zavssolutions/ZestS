@@ -1,0 +1,6 @@
+APP_ENV: production
+RUN_MIGRATIONS: "true"
+FIREBASE_PROJECT_ID: test-49b1d
+ADMIN_EMAILS: "sivakumar.perumalla.lld01@gmail.com,admin@zestsports.in"
+GCP_STORAGE_BUCKET: project-891d72fd-d662-4503-a25.firebasestorage.app
+DATABASE_URL: "postgresql+psycopg://postgres:ZestS%401089ZestS%401089@db.guxvchnfdzrkzwafdgvu.supabase.co:5432/postgres"

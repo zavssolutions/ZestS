@@ -290,10 +290,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         icon: Icons.person_search,
                         items: genderGroups.map((g) {
                           final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).gender == g);
-                          return _buildAttrCheckbox(
+                          final groupVal = isRegistered ? g : (_selGenders.isNotEmpty ? _selGenders.first : null);
+                          return _buildAttrRadio(
                             label: g.toUpperCase(),
-                            selected: _selGenders.contains(g) || isRegistered,
-                            onChanged: isRegistered ? null : (_) => toggleAttr(_selGenders, g),
+                            value: g,
+                            groupValue: groupVal,
+                            onChanged: isRegistered ? null : (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selGenders.clear();
+                                  _selGenders.add(val);
+                                });
+                              }
+                            },
                           );
                         }).toList(),
                       ),
@@ -540,6 +549,26 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
       children: [
         Checkbox(
           value: selected,
+          onChanged: onChanged,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        Text(label, style: const TextStyle(fontSize: 14)),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+  Widget _buildAttrRadio({
+    required String label,
+    required String value,
+    required String? groupValue,
+    required ValueChanged<String?>? onChanged,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Radio<String>(
+          value: value,
+          groupValue: groupValue,
           onChanged: onChanged,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),

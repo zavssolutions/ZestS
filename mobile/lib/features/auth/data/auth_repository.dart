@@ -69,43 +69,50 @@ class AuthRepository {
   }
 
   Future<AuthLoginResult> signInWithEmail(String email, String password) async {
-    final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
     UserCredential userCredential;
-    if (methods.contains("password")) {
-      try {
-        userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
+    try {
+      // 1. Try to sign in first
+      userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      final msg = e.message ?? "";
+      if (msg.contains("Recaptcha") || msg.contains("reCAPTCHA") || msg.contains("token")) {
+        throw Exception(
+          "Sign-in blocked by reCAPTCHA/Play Integrity. Add the app signing fingerprint(s) in Firebase, or temporarily disable Email/Password reCAPTCHA enforcement.",
         );
-      } on FirebaseAuthException catch (e) {
-        final msg = e.message ?? "";
-        if (e.code == "invalid-credential" && (msg.contains("Recaptcha") || msg.contains("reCAPTCHA") || msg.contains("token"))) {
-          throw Exception(
-            "Sign-in blocked by reCAPTCHA/Play Integrity. Add the app signing fingerprint(s) in Firebase (Android app settings; SHA-1 is required, SHA-256 may be available depending on console/Play setup), ensure Google Play services are up to date (use a Google Play emulator image), or temporarily disable Email/Password reCAPTCHA enforcement in Firebase Auth settings.",
+      }
+
+      // With Firebase Email Enumeration Protection enabled, 'user-not-found' and 'wrong-password' 
+      // are collapsed into 'invalid-credential'. So we attempt to register the user.
+      if (e.code == "invalid-credential" || e.code == "user-not-found" || e.code == "wrong-password") {
+        try {
+          // 2. Try to register the user
+          userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: email,
+            password: password,
           );
+        } on FirebaseAuthException catch (signUpError) {
+          // 3. If registration fails because the email is in use, it means the user DOES exist!
+          // Therefore, the original sign-in failure was indeed because of a wrong password 
+          // or because they used a different provider (like Google).
+          if (signUpError.code == "email-already-in-use") {
+             throw Exception("Incorrect password, or this email is registered with Google Sign-in.");
+          }
+          if (signUpError.code == "operation-not-allowed") {
+            throw Exception("Email/Password sign-in is disabled. Enable it in Firebase Authentication settings.");
+          }
+          if (signUpError.code == "weak-password") {
+             throw Exception("Password is too weak. Please use a stronger password.");
+          }
+          rethrow;
         }
-        if (e.code == "wrong-password" || e.code == "invalid-credential") {
-          throw Exception("Incorrect email or password.");
-        }
-        if (e.code == "too-many-requests") {
-          throw Exception("Too many failed attempts. Please try again later.");
-        }
+      } else if (e.code == "too-many-requests") {
+        throw Exception("Too many failed attempts. Please try again later.");
+      } else {
         rethrow;
       }
-    } else if (methods.isEmpty) {
-      try {
-        userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } on FirebaseAuthException catch (e) {
-        if (e.code == "operation-not-allowed") {
-          throw Exception("Email/Password sign-in is disabled. Enable it in Firebase Authentication settings.");
-        }
-        rethrow;
-      }
-    } else {
-      throw Exception("This email is registered with a different provider. Use Google Sign-in for this account.");
     }
 
     final idToken = await userCredential.user?.getIdToken(true);
