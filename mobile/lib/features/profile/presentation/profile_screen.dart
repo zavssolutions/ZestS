@@ -33,7 +33,6 @@ class ProfileScreen extends ConsumerWidget {
               Text(profile.displayName, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 4),
               Text("Role: ${profile.role}"),
-              Text("Favorite sport: ${profile.favoriteSport ?? "skating"}"),
               if (profile.role == "parent") ...[
                 const SizedBox(height: 24),
                 const Text("My Kids", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),

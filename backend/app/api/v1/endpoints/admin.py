@@ -374,30 +374,25 @@ def delete_event(
     session: SessionDep,
     current_user: User = Depends(require_roles(UserRole.ADMIN)),
 ) -> dict:
-    from sqlmodel import delete
-    from app.models.event import EventCategory, EventRegistration, EventResult, Payment, Referral
+    from app.models.enums import EventStatus
     
     event = session.get(Event, event_id)
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
     
     try:
-        # Explicitly delete related records using SQLModel delete constructs
-        session.exec(delete(EventResult).where(EventResult.event_id == event_id))
-        session.exec(delete(EventRegistration).where(EventRegistration.event_id == event_id))
-        session.exec(delete(EventCategory).where(EventCategory.event_id == event_id))
-        session.exec(delete(Payment).where(Payment.event_id == event_id))
-        session.exec(delete(Referral).where(Referral.event_id == event_id))
-        
-        session.delete(event)
+        # Instead of hard deleting, we mark the event as canceled
+        event.status = EventStatus.CANCELED
+        event.updated_at = datetime.now(timezone.utc)
+        session.add(event)
         session.commit()
     except Exception as e:
         session.rollback()
         import traceback
         detail = traceback.format_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to delete event: {e}\n{detail}")
+        raise HTTPException(status_code=500, detail=f"Failed to cancel event: {e}\n{detail}")
         
-    _log_action(session, current_user.id, "delete_event", "events", event_id)
+    _log_action(session, current_user.id, "cancel_event", "events", event_id)
     return {"status": "ok"}
 
 

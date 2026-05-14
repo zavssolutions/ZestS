@@ -251,10 +251,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         icon: Icons.roller_skating,
                         items: skateTypes.map((st) {
                           final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).skateType == st);
-                          return _buildAttrCheckbox(
+                          final groupVal = isRegistered ? st : (_selSkates.isNotEmpty ? _selSkates.first : null);
+                          return _buildAttrRadio(
                             label: st,
-                            selected: _selSkates.contains(st) || isRegistered,
-                            onChanged: isRegistered ? null : (_) => toggleAttr(_selSkates, st),
+                            value: st,
+                            groupValue: groupVal,
+                            onChanged: isRegistered ? null : (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selSkates.clear();
+                                  _selSkates.add(val);
+                                });
+                              }
+                            },
                           );
                         }).toList(),
                       ),
@@ -264,10 +273,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         icon: Icons.straighten,
                         items: distances.map((d) {
                           final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).distance == d);
-                          return _buildAttrCheckbox(
+                          final groupVal = isRegistered ? d : (_selDistances.isNotEmpty ? _selDistances.first : null);
+                          return _buildAttrRadio(
                             label: d,
-                            selected: _selDistances.contains(d) || isRegistered,
-                            onChanged: isRegistered ? null : (_) => toggleAttr(_selDistances, d),
+                            value: d,
+                            groupValue: groupVal,
+                            onChanged: isRegistered ? null : (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selDistances.clear();
+                                  _selDistances.add(val);
+                                });
+                              }
+                            },
                           );
                         }).toList(),
                       ),
@@ -277,10 +295,19 @@ class _EventDetailScreenState extends ConsumerState<EventDetailScreen> {
                         icon: Icons.group,
                         items: ageGroups.map((ag) {
                           final isRegistered = mySelectedRegs.any((r) => categories.firstWhere((c) => c.id == r.categoryId).ageGroup == ag);
-                          return _buildAttrCheckbox(
+                          final groupVal = isRegistered ? ag : (_selAgeGroups.isNotEmpty ? _selAgeGroups.first : null);
+                          return _buildAttrRadio(
                             label: ag,
-                            selected: _selAgeGroups.contains(ag) || isRegistered,
-                            onChanged: isRegistered ? null : (_) => toggleAttr(_selAgeGroups, ag),
+                            value: ag,
+                            groupValue: groupVal,
+                            onChanged: isRegistered ? null : (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selAgeGroups.clear();
+                                  _selAgeGroups.add(val);
+                                });
+                              }
+                            },
                           );
                         }).toList(),
                       ),

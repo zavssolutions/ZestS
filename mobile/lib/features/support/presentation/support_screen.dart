@@ -84,7 +84,10 @@ class _SupportScreenState extends ConsumerState<SupportScreen> {
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: "Email"),
+              decoration: const InputDecoration(
+                labelText: "Email",
+                hintText: "Please Provide your email id.",
+              ),
             ),
             const SizedBox(height: 12),
             TextField(

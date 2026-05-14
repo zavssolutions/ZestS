@@ -348,7 +348,6 @@ class _ProfileCompletionScreenState extends ConsumerState<ProfileCompletionScree
             ],
 
             const SizedBox(height: 12),
-            const Text("Favorite sport: Skating"),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : _submit,

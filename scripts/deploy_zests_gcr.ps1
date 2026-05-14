@@ -25,8 +25,10 @@ $secretExists = gcloud secrets list --filter="name:zests-database-url" --format=
 if (-not $secretExists) {
     gcloud secrets create zests-database-url --replication-policy="automatic" --quiet
 }
-# Add version (piping to gcloud)
-Write-Output $DatabaseUrl | gcloud secrets versions add zests-database-url --data-file=- --quiet
+# Add version (no trailing newline)
+[io.file]::WriteAllText("db_secret.txt", $DatabaseUrl)
+gcloud secrets versions add zests-database-url --data-file=db_secret.txt --quiet
+Remove-Item db_secret.txt
 
 # 2.5 Grant IAM Permissions to Service Account
 Write-Host "[2.5/7] Configuring IAM Permissions..." -ForegroundColor Yellow
@@ -70,7 +72,16 @@ Write-Host "Backend is live at: $BackendUrl" -ForegroundColor Green
 
 # 6. Build Admin Dashboard Remotely via Cloud Build (pass backend URL as build arg)
 Write-Host "[6/7] Building Admin Dashboard Image in the Cloud..." -ForegroundColor Yellow
-gcloud builds submit --tag "$Registry/admin:latest" --build-arg "NEXT_PUBLIC_API_BASE_URL=$BackendUrl/api/v1" ./admin
+$cloudBuildYaml = @"
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', '$Registry/admin:latest', '--build-arg', 'NEXT_PUBLIC_API_BASE_URL=$BackendUrl/api/v1', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', '$Registry/admin:latest']
+"@
+[io.file]::WriteAllText("admin/cloudbuild.yaml", $cloudBuildYaml)
+gcloud builds submit --config admin/cloudbuild.yaml ./admin
+Remove-Item admin/cloudbuild.yaml
 
 # Wait for registry propagation
 Write-Host "Waiting 10 seconds for registry to index admin image..." -ForegroundColor Gray

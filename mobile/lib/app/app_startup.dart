@@ -49,7 +49,12 @@ final startupDestinationProvider = FutureProvider<StartupDestination>((ref) asyn
       } else {
         return StartupDestination.profileCompletion;
       }
-    } catch (_) {
+    } catch (e) {
+      final cachedProfile = await ref.read(cachedProfileProvider.future);
+      if (cachedProfile != null && cachedProfile.hasCompletedProfile) {
+        return StartupDestination.home;
+      }
+      // If we genuinely have no profile or it's incomplete, or it's a 404
       return StartupDestination.profileCompletion;
     }
   }

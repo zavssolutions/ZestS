@@ -10,6 +10,9 @@ from app.models.enums import EventStatus, RegistrationStatus
 
 class Event(SQLModel, table=True):
     __tablename__ = "events"
+    __table_args__ = (
+        UniqueConstraint("title", name="uq_events_title"),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     organizer_id: Optional[int] = Field(default=None, foreign_key="organizer_profiles.organizer_id")
