@@ -8,6 +8,8 @@ import "../../../core/api_client.dart";
 import "../../events/data/events_repository.dart";
 import "event_form_dialog.dart";
 import "../../events/data/event_model.dart";
+import "../../profile/data/profile_providers.dart";
+
 
 // ── Providers ──────────────────────────────────────────────────────
 
