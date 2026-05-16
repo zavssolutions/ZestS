@@ -330,7 +330,11 @@ def list_events(
         # Get organizer_id for the current user
         profile = session.get(OrganizerProfile, current_user.id)
         if profile:
-            statement = statement.where(Event.organizer_id == profile.organizer_id)
+            from sqlalchemy import or_
+            conditions = [Event.organizer_user_id == current_user.id]
+            if profile.organizer_id is not None:
+                conditions.append(Event.organizer_id == profile.organizer_id)
+            statement = statement.where(or_(*conditions))
         else:
             # If no profile, they see nothing
             return []

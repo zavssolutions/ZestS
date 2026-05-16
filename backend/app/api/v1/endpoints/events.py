@@ -142,7 +142,15 @@ def update_event(
     # If Organizer: must be owner AND status must be draft
     if current_user.role == UserRole.ORGANIZER:
         profile = session.get(OrganizerProfile, current_user.id)
-        if not profile or event.organizer_id != profile.organizer_id:
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+            
+        is_owner = event.organizer_user_id == current_user.id
+        if not is_owner and profile.organizer_id is not None:
+            if event.organizer_id == profile.organizer_id:
+                is_owner = True
+                
+        if not is_owner:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
         
         if event.status != "draft":
@@ -176,6 +184,19 @@ def update_event_status(
     event = session.exec(select(Event).where(Event.id == UUID(str(event_id)))).first()
     if event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")
+
+    if current_user.role == UserRole.ORGANIZER:
+        profile = session.get(OrganizerProfile, current_user.id)
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+            
+        is_owner = event.organizer_user_id == current_user.id
+        if not is_owner and profile.organizer_id is not None:
+            if event.organizer_id == profile.organizer_id:
+                is_owner = True
+                
+        if not is_owner:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
 
     new_status = payload.status.lower() if isinstance(payload.status, str) else payload.status.value
     event.status = new_status
@@ -387,7 +408,15 @@ def update_event_category(
     # If Organizer: must be owner AND status must be draft
     if current_user.role == UserRole.ORGANIZER:
         profile = session.get(OrganizerProfile, current_user.id)
-        if not profile or event.organizer_id != profile.organizer_id:
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+            
+        is_owner = event.organizer_user_id == current_user.id
+        if not is_owner and profile.organizer_id is not None:
+            if event.organizer_id == profile.organizer_id:
+                is_owner = True
+                
+        if not is_owner:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
         
         if event.status != "draft":
@@ -420,7 +449,15 @@ def delete_event_category(
     # If Organizer: must be owner AND status must be draft
     if current_user.role == UserRole.ORGANIZER:
         profile = session.get(OrganizerProfile, current_user.id)
-        if not profile or event.organizer_id != profile.organizer_id:
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
+            
+        is_owner = event.organizer_user_id == current_user.id
+        if not is_owner and profile.organizer_id is not None:
+            if event.organizer_id == profile.organizer_id:
+                is_owner = True
+                
+        if not is_owner:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not own this event")
 
         if event.status != "draft":

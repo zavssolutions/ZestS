@@ -740,6 +740,9 @@ class _OrganizerDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = ref.watch(cachedProfileProvider).valueOrNull?.role == "admin";
+    final eventsAsync = ref.watch(adminEventsProvider);
+    final eventsCount = eventsAsync.valueOrNull?.length.toString() ?? "...";
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -753,10 +756,10 @@ class _OrganizerDashboard extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: _StatCard(label: "My Events", value: "...", icon: Icons.event, color: Colors.blue),
+                child: _StatCard(label: "My Events", value: eventsCount, icon: Icons.event, color: Colors.blue),
               ),
-              SizedBox(width: 12),
-              Expanded(
+              const SizedBox(width: 12),
+              const Expanded(
                 child: _StatCard(label: "Registrations", value: "...", icon: Icons.how_to_reg, color: Colors.teal),
               ),
             ],
