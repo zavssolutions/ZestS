@@ -7,6 +7,7 @@ import "../../events/data/event_model.dart";
 import "../../events/data/events_repository.dart";
 import "../../profile/data/profile_providers.dart";
 import "event_category_selector.dart";
+import "../../../core/api_exception_handler.dart";
 
 void showEventFormDialog(BuildContext context, WidgetRef ref, {EventModel? event, VoidCallback? onSuccess}) {
   final isEdit = event != null;
@@ -230,7 +231,8 @@ void showEventFormDialog(BuildContext context, WidgetRef ref, {EventModel? event
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
             FilledButton(
-              onPressed: () async {
+              onPressed: uploading ? null : () async {
+                setDialogState(() { uploading = true; });
                 try {
                   final payload = <String, dynamic>{
                     "title": titleCtrl.text,
@@ -261,10 +263,15 @@ void showEventFormDialog(BuildContext context, WidgetRef ref, {EventModel? event
                   if (onSuccess != null) onSuccess();
                   if (ctx.mounted) Navigator.pop(ctx);
                 } catch (e) {
-                  if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Action failed: $e")));
+                  setDialogState(() { uploading = false; });
+                  if (ctx.mounted) {
+                    showFriendlyErrorSnackBar(ctx, e);
+                  }
                 }
               },
-              child: Text(isEdit ? "Update" : "Create"),
+              child: uploading 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+                  : Text(isEdit ? "Update" : "Create"),
             ),
           ],
         );

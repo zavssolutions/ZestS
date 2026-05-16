@@ -59,7 +59,7 @@ def _log_action(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        metadata_json=json.dumps(metadata) if metadata else None,
+        metadata_json=json.dumps(metadata, default=str) if metadata else None,
     )
     session.add(log)
     session.commit()
@@ -359,9 +359,16 @@ def update_event(
         setattr(event, key, value)
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
-    session.commit()
-    session.refresh(event)
+    try:
+        session.commit()
+        session.refresh(event)
+    except Exception as e:
+        session.rollback()
+        if "UniqueViolation" in str(e) or "IntegrityError" in type(e).__name__:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event update failed: Title may already exist.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error occurred.")
     
+
     # Sync with Meilisearch
     try:
         sync_event(event)

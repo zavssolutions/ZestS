@@ -110,9 +110,16 @@ def create_event(
 
     event = Event(**data, organizer_id=target_organizer_id, organizer_user_id=target_organizer_user_id)
     session.add(event)
-    session.commit()
-    session.refresh(event)
+    try:
+        session.commit()
+        session.refresh(event)
+    except Exception as e:
+        session.rollback()
+        if "UniqueViolation" in str(e) or "IntegrityError" in type(e).__name__:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event creation failed: Title may already exist.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error occurred.")
     
+
     for cat_data in categories_data:
         # Copy event price to category if event price is set
         if event.price > 0:
@@ -161,8 +168,14 @@ def update_event(
     
     event.updated_at = datetime.now(timezone.utc)
     session.add(event)
-    session.commit()
-    session.refresh(event)
+    try:
+        session.commit()
+        session.refresh(event)
+    except Exception as e:
+        session.rollback()
+        if "UniqueViolation" in str(e) or "IntegrityError" in type(e).__name__:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Event update failed: Title may already exist.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error occurred.")
     
     # Sync search index
     try:
