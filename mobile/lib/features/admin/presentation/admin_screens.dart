@@ -329,7 +329,7 @@ class AdminEventsScreen extends ConsumerWidget {
                         const PopupMenuItem(value: "manage_categories", child: Text("Manage Categories")),
                         const PopupMenuItem(value: "edit", child: Text("Edit Event")),
                         if (status == "draft") const PopupMenuItem(value: "publish", child: Text("Publish")),
-                        if (!isCanceled) const PopupMenuItem(value: "cancel", child: Text("Cancel Event")),
+                        if (!isCanceled) const PopupMenuItem(value: "postpone", child: Text("Postpone Event")),
                         if (!isCanceled) const PopupMenuItem(value: "delete", child: Text("Delete")),
                       ];
                     },
@@ -352,25 +352,9 @@ class AdminEventsScreen extends ConsumerWidget {
         await dio.put("/admin/events/${event["id"]}", data: {"status": "published"});
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event published. Notifications sent.")));
-      } else if (action == "cancel") {
-        // Add confirmation
-        if (!context.mounted) return;
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Cancel Event?"),
-            content: const Text("This will notify all registered users. This action cannot be undone."),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")),
-              FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Yes, Cancel")),
-            ],
-          ),
-        );
-        if (confirm != true) return;
-
-        await dio.put("/admin/events/${event["id"]}", data: {"status": "canceled"});
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event cancelled. Notifications sent.")));
+      } else if (action == "postpone") {
+        _showPostponeEventDialog(context, ref, event);
+        return;
       } else if (action == "delete") {
         // Add confirmation for delete too
         if (!context.mounted) return;
@@ -418,6 +402,92 @@ class AdminEventsScreen extends ConsumerWidget {
 
   void _showCreateEventDialog(BuildContext context, WidgetRef ref) {
     showEventFormDialog(context, ref, onSuccess: () => ref.invalidate(adminEventsProvider));
+  }
+
+  void _showPostponeEventDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> event) {
+    DateTime? startDate = DateTime.tryParse(event["start_at_utc"] ?? "")?.toLocal();
+    DateTime? endDate = DateTime.tryParse(event["end_at_utc"] ?? "")?.toLocal();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: const Text("Postpone Event"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("Modify event start and end dates."),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text("Start Date & Time"),
+                  subtitle: Text(startDate != null ? startDate!.toString() : "Not set"),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: startDate ?? DateTime.now(), firstDate: DateTime.now(), lastDate: DateTime(2100));
+                    if (d == null) return;
+                    if (!ctx.mounted) return;
+                    final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(startDate ?? DateTime.now()));
+                    if (t == null) return;
+                    setDialogState(() {
+                      startDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                    });
+                  },
+                ),
+                ListTile(
+                  title: const Text("End Date & Time"),
+                  subtitle: Text(endDate != null ? endDate!.toString() : "Not set"),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final d = await showDatePicker(context: ctx, initialDate: endDate ?? startDate ?? DateTime.now(), firstDate: startDate ?? DateTime.now(), lastDate: DateTime(2100));
+                    if (d == null) return;
+                    if (!ctx.mounted) return;
+                    final t = await showTimePicker(context: ctx, initialTime: TimeOfDay.fromDateTime(endDate ?? startDate ?? DateTime.now()));
+                    if (t == null) return;
+                    setDialogState(() {
+                      endDate = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+              FilledButton(
+                onPressed: () async {
+                  if (startDate == null || endDate == null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text("Please select valid dates")));
+                    return;
+                  }
+                  try {
+                    final dio = ref.read(dioProvider);
+                    final url = (ref.read(cachedProfileProvider).value?.role == "admin") 
+                      ? "/admin/events/${event["id"]}" 
+                      : "/events/${event["id"]}";
+                      
+                    await dio.put(url, data: {
+                      "start_at_utc": startDate!.toUtc().toIso8601String(),
+                      "end_at_utc": endDate!.toUtc().toIso8601String(),
+                      "status": "published",
+                    });
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    ref.invalidate(adminEventsProvider);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Event postponed successfully.")));
+                    }
+                  } catch (e) {
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text("Error: $e")));
+                    }
+                  }
+                },
+                child: const Text("Publish Updated Event"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 
